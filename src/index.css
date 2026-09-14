@@ -1,0 +1,283 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------- */
+/* Tokens — "Tiger" (dark, default) on :root and .dark,                   */
+/* "Paper" (light) on html.light. Tailwind v4 @theme values are static,   */
+/* so the raw custom properties live here and @theme inline re-exposes    */
+/* them as Tailwind colors/fonts/radii below.                             */
+/* ---------------------------------------------------------------------- */
+
+:root,
+.dark {
+  --bg: #0e0d12;
+  --panel: rgba(255, 255, 255, 0.045);
+  --panel-2: rgba(255, 255, 255, 0.08);
+  --fg: #f3eee4;
+  --fg-muted: rgba(243, 238, 228, 0.58);
+  --fg-faint: rgba(243, 238, 228, 0.32);
+  --line: rgba(243, 238, 228, 0.1);
+  --tiger: #ff6b1a;
+  --ember: #ffb347;
+  --mint: #7cf5c6;
+  --rose: #ff5c7a;
+  --aurora-opacity: 0.28;
+
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+}
+
+html.light {
+  --bg: #f3eee4;
+  --panel: rgba(255, 255, 255, 0.55);
+  --panel-2: rgba(255, 255, 255, 0.8);
+  --fg: #14131a;
+  --fg-muted: rgba(20, 19, 26, 0.6);
+  --fg-faint: rgba(20, 19, 26, 0.38);
+  --line: rgba(20, 19, 26, 0.1);
+  --tiger: #f25a0a;
+  --ember: #ffb347;
+  --mint: #12a97a;
+  --rose: #e0405e;
+  --aurora-opacity: 0.18;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-faint: var(--fg-faint);
+  --color-line: var(--line);
+  --color-tiger: var(--tiger);
+  --color-ember: var(--ember);
+  --color-mint: var(--mint);
+  --color-rose: var(--rose);
+
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Base                                                                    */
+/* ---------------------------------------------------------------------- */
+
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  body {
+    @apply font-sans text-fg antialiased;
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .font-display {
+    font-optical-sizing: auto;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Glass                                                                   */
+/* ---------------------------------------------------------------------- */
+
+@layer components {
+  .glass {
+    background: var(--panel);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-panel);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Signature: stripes — "the tiger is working"                             */
+/* ---------------------------------------------------------------------- */
+
+.stripes {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--tiger) 0 6px,
+    transparent 6px 14px
+  );
+  background-size: 20px 20px;
+}
+
+.stripes-animate {
+  animation: stripes-run 0.8s linear infinite;
+}
+
+@keyframes stripes-run {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 20px 0;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Aurora atmosphere                                                       */
+/* ---------------------------------------------------------------------- */
+
+.aurora {
+  opacity: var(--aurora-opacity);
+  filter: blur(40px);
+  animation: aurora-drift 28s ease-in-out infinite;
+}
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-40px, 40px) scale(1.08);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Caret                                                                    */
+/* ---------------------------------------------------------------------- */
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.caret-blink {
+  animation: caret-blink 1s step-end infinite;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Range input (Voice tuning sliders)                                      */
+/* ---------------------------------------------------------------------- */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--tiger) 0%, var(--tiger) var(--range-fill, 50%), var(--panel-2) var(--range-fill, 50%), var(--panel-2) 100%);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid var(--tiger);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--tiger);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid var(--tiger);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Scrollbar                                                               */
+/* ---------------------------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-faint);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Reduced motion                                                          */
+/* ---------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .stripes-animate {
+    animation: none;
+  }
+
+  .aurora {
+    animation: none;
+  }
+
+  .caret-blink {
+    animation: none;
+    opacity: 1;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

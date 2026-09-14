@@ -8,7 +8,7 @@ Guidance for Claude Code when working in this repository.
 
 ### Product spec
 - **Target:** macOS app that runs well on an older MacBook Air. Ships as a native `.app`, easy to install.
-- **OCR:** local `unlimited-OCR` model parses uploaded content.
+- **OCR:** Baidu Unlimited-OCR (DeepSeek-OCR derivative, 2.9B LM + 0.4B vision projector, 32K context, MIT). Quant chosen at first run by hardware: `q8_0` on Apple Silicon with ≥16 GB RAM, `Q4_K_M` on 8 GB machines and on Intel Macs. Sources: Ollama `frob/unlimited-ocr:q8_0` (4.0 GB), GGUF `DevQuasar/baidu.Unlimited-OCR-GGUF` (Q4_K_M 1.95 GB + mmproj f16 825 MB).
 - **Writer:** lightweight local LLM writes papers from uploaded content plus context the user adds.
 - **Style learning loop:** the writer LLM adopts the user's writing style over time, but always with correct grammar.
 - **Chat:** the user gives intent and context conversationally.
@@ -20,7 +20,8 @@ Guidance for Claude Code when working in this repository.
 ### Architecture decisions
 - **App shell:** Tauri 2. Rust is a build-time toolchain only; the shipped app is tiny with a low runtime footprint (best fit for old hardware) and gives native macOS window vibrancy for true glassmorphism.
 - **Frontend:** Vite + TypeScript + React + Tailwind. React bundles to static assets (no extra end-user runtime install).
-- **Local LLM runtime (later phase):** node-llama-cpp or similar — no Python.
+- **OCR runtime (later phase):** bundle `llama-server` from llama.cpp releases as a Tauri sidecar (macOS arm64 + x64 builds are published; Metal on Apple Silicon, CPU on Intel) and run Unlimited-OCR with `--mmproj`. node-llama-cpp cannot take image input yet (withcatai/node-llama-cpp#88 still open), so it is not an option for OCR. During development, talk to a locally running Ollama instead (`http://localhost:11434`).
+- **Writer LLM runtime (later phase):** node-llama-cpp or the same llama-server sidecar — no Python.
 - **DB (later phase):** SQLite (e.g. tauri-plugin-sql / better-sqlite3).
 
 ## Workflow (required)
@@ -97,6 +98,14 @@ describing what was planned and what was implemented.
 - `src-tauri/tauri.conf.json`: `titleBarStyle` must be `"Overlay"` (capitalised enum) — `"overlay"` failed schema validation and blocked `tauri dev`.
 - Added `app.macOSPrivateApi: true`; without it Tauri warns the transparent window is not honoured, so native vibrancy never shows. Note: private API use rules out Mac App Store distribution (direct `.dmg` distribution is unaffected).
 - Config validated against the bundled `config.schema.json` (0 errors); `npm run tauri dev` compiles (`Finished dev profile`) and launches `target/debug/app` without warnings.
+
+### 2026-09-15 — OCR model decision (Opus)
+- Benchmarked `frob/unlimited-ocr:q8_0` on this M1 Max via Ollama 0.32 with a rendered A4 text page (1236×1600): 906 prompt tokens, 396 output tokens, 6.3 s cold at 8K context (prefill ~250 tok/s, decode ~200 tok/s). Output is layout-aware (header/title/text/table blocks with bounding boxes, tables as HTML). Resident memory: 5.0 GB at `num_ctx` 8192, 6.6 GB at 32768.
+- Consequence for an older MacBook Air: 8 GB models cannot hold the q8 footprint next to macOS + the app → use `Q4_K_M` (~3.3 GB resident at 8K context). 16 GB Apple Silicon → `q8_0` is fine. Intel Airs run CPU-only (no Metal), expect minutes per page; Ollama on macOS requires macOS 14+.
+- Runtime: llama-server sidecar (no Python, no user-installed deps) chosen over requiring Ollama; node-llama-cpp ruled out for OCR (no image input). Always cap OCR context at 8192 and process one page at a time.
+- Q4_K_M verified on the same page (same M1 Max, Ollama, `num_ctx` 8192): `ollama pull hf.co/DevQuasar/baidu.Unlimited-OCR-GGUF:Q4_K_M` fetches the mmproj automatically (2.0 GB + 825 MB, model reports `vision`). Cold 6.2 s (load 1.3 s, prefill ~300 tok/s, decode ~220 tok/s), warm 1.8 s. Resident memory 3.8 GB vs 5.0 GB for q8_0. Extracted text is character-identical to q8; only block labels differ (title/header, table header row emitted as text). Q4_K_M is the default for 8 GB and Intel machines.
+- Both quants emit a short junk preamble before the first block (`v`, `s`, `v: T1`); the OCR parser must discard everything before the first `<label> [x, y, x, y]` line.
+- Not yet verified: real timings on an Intel Air.
 
 <!-- Add new entries above this line, newest last. -->
 

@@ -1,3 +1,4 @@
+import logo from '../assets/logo.svg'
 import React from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -242,6 +243,7 @@ export const SetupWizard: React.FC = () => {
           >
             {step === 0 && (
               <div>
+                <img src={logo} alt="" className="mb-6 h-28 w-28" draggable={false} />
                 <h1 className="font-display text-3xl font-bold text-fg mb-4">Meet papertiger</h1>
                 <ul className="space-y-2.5 mb-8">
                   {[

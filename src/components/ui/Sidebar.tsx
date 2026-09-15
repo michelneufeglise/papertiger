@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import clsx from 'clsx'
+import logo from '../../assets/logo.svg'
 
 export interface SidebarItemProps {
   icon: LucideIcon
@@ -66,9 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ children, className }) => {
         className
       )}
     >
-      <div className="mb-3 font-display font-extrabold text-lg tracking-[-0.02em] select-none">
-        p<span className="text-tiger">t</span>
-      </div>
+      <img src={logo} alt="papertiger" className="mb-3 h-9 w-9 select-none" draggable={false} />
       {children}
     </aside>
   )

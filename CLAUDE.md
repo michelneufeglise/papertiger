@@ -138,6 +138,11 @@ describing what was planned and what was implemented.
 - Persistence: Rust `load_app_data` / `save_app_data` (atomic write to `<name>.json` in the app data dir), `src/lib/storage.ts` (localStorage fallback in the browser, debounced saves). Sources persist with their text and Tauri path; on launch done/error sources are restored and unfinished ones with a path are re-queued. Hydration runs from `main.tsx`.
 - Verified: slider value survives a reload; an OCR'd source survives a reload with its text. Not persisted yet: the paper and the chat thread.
 
+### 2026-09-15 — Logo
+- Hand-drawn SVG mark: a front-facing tiger biting a torn sheet of paper (tiger→ember fur gradient, ink stripes, paper sheet with folded ember corner). Sources: `design/logo-mark.svg` (mark), `design/app-icon.svg` (ink squircle + tiger glow + faint stripes), `design/app-icon.png` (1024 render used for `npx tauri icon`).
+- Applied: `src-tauri/icons/*` regenerated (mobile sets removed), `public/favicon.svg`, `src/assets/logo.svg` used in the rail (replaces the "pt" wordmark) and on the wizard welcome step.
+- Regenerate icons after editing the SVG: render `design/app-icon.svg` to a 1024 PNG (`qlmanage -t -s 1024 -o design design/app-icon.svg`) then `npx tauri icon design/app-icon.png`.
+
 <!-- Add new entries above this line, newest last. -->
 
 

@@ -138,10 +138,11 @@ describing what was planned and what was implemented.
 - Persistence: Rust `load_app_data` / `save_app_data` (atomic write to `<name>.json` in the app data dir), `src/lib/storage.ts` (localStorage fallback in the browser, debounced saves). Sources persist with their text and Tauri path; on launch done/error sources are restored and unfinished ones with a path are re-queued. Hydration runs from `main.tsx`.
 - Verified: slider value survives a reload; an OCR'd source survives a reload with its text. Not persisted yet: the paper and the chat thread.
 
-### 2026-09-15 — Logo
-- Hand-drawn SVG mark: a front-facing tiger biting a torn sheet of paper (tiger→ember fur gradient, ink stripes, paper sheet with folded ember corner). Sources: `design/logo-mark.svg` (mark), `design/app-icon.svg` (ink squircle + tiger glow + faint stripes), `design/app-icon.png` (1024 render used for `npx tauri icon`).
-- Applied: `src-tauri/icons/*` regenerated (mobile sets removed), `public/favicon.svg`, `src/assets/logo.svg` used in the rail (replaces the "pt" wordmark) and on the wizard welcome step.
-- Regenerate icons after editing the SVG: render `design/app-icon.svg` to a 1024 PNG (`qlmanage -t -s 1024 -o design design/app-icon.svg`) then `npx tauri icon design/app-icon.png`.
+### 2026-09-15 — Logo (v2, graphic profile)
+- First attempt (front-facing illustrated tiger) rejected by the user as too pictorial. Replaced with a graphic mark: a solid angular tiger head in side profile, stripes cut in as tapered ink wedges, the open mouth as negative space, a sheet clamped between the fangs (dimmed inside the mouth so the teeth read), folded ember corner.
+- Sources: `design/logo-mark.svg` (mark, transparent), `design/app-icon.svg` (ink squircle + tiger glow), `design/app-icon.png` (1024 render for `npx tauri icon`), previews `design/logo-mark.png`, `design/logo-mark-64.png`.
+- Applied: `src-tauri/icons/*` regenerated (mobile sets removed), `public/favicon.svg`, `src/assets/logo.svg` in the rail and the wizard welcome.
+- Regenerate icons after editing the SVG: `qlmanage -t -s 1024 -o design design/app-icon.svg && mv design/app-icon.svg.png design/app-icon.png && npx tauri icon design/app-icon.png`, then delete `src-tauri/icons/{android,ios}`.
 
 <!-- Add new entries above this line, newest last. -->
 

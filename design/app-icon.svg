@@ -1,104 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.6">
-      <stop offset="0" stop-color="#FF6B1A" stop-opacity="0.55"/>
-      <stop offset="0.6" stop-color="#FF6B1A" stop-opacity="0.12"/>
+    <radialGradient id="glow" cx="0.52" cy="0.46" r="0.6">
+      <stop offset="0" stop-color="#FF6B1A" stop-opacity="0.5"/>
+      <stop offset="0.6" stop-color="#FF6B1A" stop-opacity="0.1"/>
       <stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/>
     </radialGradient>
-    <pattern id="stripes" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
-      <rect width="9" height="28" fill="#F3EEE4" opacity="0.035"/>
-    </pattern>
   </defs>
-  <!-- macOS squircle -->
   <path d="M512 0 C900 0 1024 124 1024 512 C1024 900 900 1024 512 1024 C124 1024 0 900 0 512 C0 124 124 0 512 0 Z" fill="#0E0D12"/>
-  <path d="M512 0 C900 0 1024 124 1024 512 C1024 900 900 1024 512 1024 C124 1024 0 900 0 512 C0 124 124 0 512 0 Z" fill="url(#stripes)"/>
   <rect width="1024" height="1024" fill="url(#glow)"/>
-  <g transform="translate(512 512) scale(1.5) translate(-256 -256)">
-  <defs>
-    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFB347"/>
-      <stop offset="0.55" stop-color="#FF6B1A"/>
-      <stop offset="1" stop-color="#E5540F"/>
-    </linearGradient>
-    <linearGradient id="paperg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#EDE6D8"/>
-    </linearGradient>
-  </defs>
-
-  <g transform="translate(256 236) scale(0.86) translate(-256 -256)">
-  <!-- ears -->
-  <path d="M96 190 L70 78 Q140 92 176 140 Z" fill="url(#fur)"/>
-  <path d="M112 176 L96 106 Q140 116 160 146 Z" fill="#0E0D12" opacity="0.9"/>
-  <path d="M416 190 L442 78 Q372 92 336 140 Z" fill="url(#fur)"/>
-  <path d="M400 176 L416 106 Q372 116 352 146 Z" fill="#0E0D12" opacity="0.9"/>
-
-  <!-- head -->
-  <path d="M256 96 C330 96 400 128 418 200 C434 262 420 330 380 384 C346 430 300 452 256 452 C212 452 166 430 132 384 C92 330 78 262 94 200 C112 128 182 96 256 96 Z" fill="url(#fur)"/>
-
-  <!-- forehead stripes -->
-  <path d="M256 104 L272 178 L256 168 L240 178 Z" fill="#0E0D12"/>
-  <path d="M206 116 L232 176 L216 170 L196 156 Z" fill="#0E0D12"/>
-  <path d="M306 116 L280 176 L296 170 L316 156 Z" fill="#0E0D12"/>
-  <path d="M166 150 L204 194 L186 192 L162 178 Z" fill="#0E0D12"/>
-  <path d="M346 150 L308 194 L326 192 L350 178 Z" fill="#0E0D12"/>
-
-  <!-- cheek stripes -->
-  <path d="M100 236 L172 258 L164 272 L104 266 Z" fill="#0E0D12"/>
-  <path d="M104 286 L168 290 L160 304 L112 310 Z" fill="#0E0D12"/>
-  <path d="M412 236 L340 258 L348 272 L408 266 Z" fill="#0E0D12"/>
-  <path d="M408 286 L344 290 L352 304 L400 310 Z" fill="#0E0D12"/>
-
-  <!-- eyes -->
-  <path d="M160 214 Q196 190 234 218 Q200 240 160 214 Z" fill="#0E0D12"/>
-  <path d="M352 214 Q316 190 278 218 Q312 240 352 214 Z" fill="#0E0D12"/>
-  <circle cx="204" cy="216" r="9" fill="#FFB347"/>
-  <circle cx="308" cy="216" r="9" fill="#FFB347"/>
-  <circle cx="207" cy="212" r="3.5" fill="#F3EEE4"/>
-  <circle cx="311" cy="212" r="3.5" fill="#F3EEE4"/>
-  <!-- brow lines -->
-  <path d="M164 196 Q198 176 238 200" stroke="#0E0D12" stroke-width="9" stroke-linecap="round" fill="none"/>
-  <path d="M348 196 Q314 176 274 200" stroke="#0E0D12" stroke-width="9" stroke-linecap="round" fill="none"/>
-
-  <!-- muzzle -->
-  <path d="M176 262 Q256 236 336 262 Q356 316 300 334 L256 324 L212 334 Q156 316 176 262 Z" fill="#F3EEE4"/>
-  <!-- nose -->
-  <path d="M232 262 L280 262 Q286 264 282 272 L262 296 Q256 302 250 296 L230 272 Q226 264 232 262 Z" fill="#0E0D12"/>
-  <path d="M256 296 L256 316" stroke="#0E0D12" stroke-width="6" stroke-linecap="round"/>
-
-  <!-- open mouth -->
-  <path id="cavity" d="M146 318 Q256 298 366 318 L350 424 Q256 452 162 424 Z" fill="#0E0D12"/>
-
-  <!-- the sheet: top part sits inside the mouth (dimmed), the rest hangs out below the jaw -->
-  <g transform="rotate(-12 256 400)">
-    <!-- shadow -->
-    <path transform="translate(6 8)" d="M198 336 L336 338 L336 560 Q336 566 330 566 L204 566 Q198 566 198 560 Z" fill="#0E0D12" opacity="0.28"/>
-    <!-- torn top edge -->
-    <path id="sheet" d="M198 336 L212 324 L226 338 L240 322 L254 336 L268 322 L282 338 L296 324 L310 338 L324 326 L336 338 L336 560 Q336 566 330 566 L204 566 Q198 566 198 560 Z" fill="url(#paperg)"/>
-    <!-- folded corner -->
-    <path d="M336 520 L336 566 L290 566 Z" fill="#FFB347"/>
-    <path d="M336 520 L290 566 L336 566 Z" fill="#0E0D12" opacity="0.12"/>
-    <!-- text lines -->
-    <path d="M216 360 h86 M216 380 h104 M216 400 h70 M216 466 h96 M216 488 h72 M216 510 h84 M216 532 h56" stroke="#0E0D12" stroke-opacity="0.28" stroke-width="7" stroke-linecap="round"/>
+  <g transform="translate(512 512) scale(1.45) translate(-282 -250)">
+  <!-- the sheet, drawn first so both jaws overlap it -->
+  <g transform="rotate(-14 420 370)">
+    <path d="M352 268 L484 268 L484 446 L352 446 Z" fill="#F3EEE4"/>
+    <path d="M484 406 L484 446 L444 446 Z" fill="#FFB347"/>
+    <path d="M382 336 h62 M382 364 h76 M382 392 h48" stroke="#0E0D12" stroke-opacity="0.35" stroke-width="10" stroke-linecap="round"/>
   </g>
-  <!-- dim the part of the sheet that is inside the mouth -->
-  <path d="M146 318 Q256 298 366 318 L350 424 Q256 452 162 424 Z" fill="#0E0D12" opacity="0.45"/>
-
-  <!-- upper fangs biting the sheet -->
-  <path d="M170 322 L186 366 L202 324 Z" fill="#F3EEE4"/>
-  <path d="M342 322 L326 366 L310 324 Z" fill="#F3EEE4"/>
-  <path d="M222 318 L232 340 L242 318 Z" fill="#F3EEE4"/>
-  <path d="M290 318 L280 340 L270 318 Z" fill="#F3EEE4"/>
-  <path d="M250 316 L256 332 L262 316 Z" fill="#F3EEE4"/>
-
-  <!-- lower lip line over the sheet -->
-  <path d="M164 424 Q256 452 348 424" stroke="#0E0D12" stroke-width="10" fill="none" stroke-linecap="round"/>
-  <!-- lower teeth -->
-  <path d="M186 436 L198 402 L212 438 Z" fill="#F3EEE4"/>
-  <path d="M326 436 L314 402 L300 438 Z" fill="#F3EEE4"/>
-  <path d="M236 446 L245 424 L254 446 Z" fill="#F3EEE4"/>
-  <path d="M276 446 L267 424 L258 446 Z" fill="#F3EEE4"/>
-  </g>
+  <!-- head silhouette, profile facing right; the open mouth is negative space -->
+  <path d="M196 58 L252 130 L336 152 L392 178 L456 226 L462 250 L430 276 L356 282 L330 302 L386 340 L406 372 L370 400 L300 406 L262 432 L236 402 L198 426 L176 390 L140 398 L112 336 L104 250 L128 184 L160 150 Z" fill="#FF6B1A"/>
+  <!-- ear inner -->
+  <path d="M198 92 L178 146 L236 132 Z" fill="#0E0D12"/>
+  <!-- stripes: tapered wedges, thick at the back, pointed toward the face -->
+  <path d="M284 152 L314 150 L326 208 L314 204 Z" fill="#0E0D12"/>
+  <path d="M238 138 L266 146 L284 202 L272 200 Z" fill="#0E0D12"/>
+  <path d="M120 198 L232 250 L230 260 L112 232 Z" fill="#0E0D12"/>
+  <path d="M106 268 L230 294 L230 304 L106 300 Z" fill="#0E0D12"/>
+  <path d="M122 342 L232 336 L232 346 L136 372 Z" fill="#0E0D12"/>
+  <path d="M338 166 L396 192 L390 204 L336 182 Z" fill="#0E0D12"/>
+  <!-- eye -->
+  <path d="M350 210 L402 204 L412 218 L366 226 Z" fill="#0E0D12"/>
+  <path d="M388 208 L402 206 L404 214 L390 216 Z" fill="#FFB347"/>
+  <!-- nostril -->
+  <circle cx="448" cy="238" r="7" fill="#0E0D12"/>
+  <!-- shadow inside the mouth so the fangs read against the sheet -->
+  <path d="M430 276 L356 282 L330 302 L386 340 L406 372 Z" fill="#0E0D12" opacity="0.55"/>
+  <!-- fangs -->
+  <path d="M414 276 L428 322 L444 274 Z" fill="#F3EEE4"/>
+  <path d="M378 280 L386 306 L396 280 Z" fill="#F3EEE4"/>
+  <path d="M382 344 L396 308 L410 350 Z" fill="#F3EEE4"/>
 
   </g>
 </svg>

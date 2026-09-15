@@ -182,3 +182,57 @@ and the local queue. UI unchanged.
 ## Verification
 `npm run build`, `npm run lint`; for the runtime, this machine has Ollama with `qwen3:4b-instruct-2507-q4_K_M`
 already pulled — use it for a real streamed generation in the browser preview.
+
+## Addendum (2026-09-15): voice tunings in the prompt, persisted sources
+
+### Storage — Rust + `src/lib/storage.ts`
+Rust commands in `src-tauri/src/lib.rs` (register them):
+```rust
+#[tauri::command] fn load_app_data(app: tauri::AppHandle, name: String) -> Result<Option<String>, String>
+#[tauri::command] fn save_app_data(app: tauri::AppHandle, name: String, contents: String) -> Result<(), String>
+// Files live in app.path().app_data_dir()? (create_dir_all) as `<name>.json`; `name` must match ^[a-z0-9-]+$.
+// save writes to `<name>.json.tmp` then renames (atomic).
+```
+```ts
+// src/lib/storage.ts
+export async function loadJson<T>(name: string): Promise<T | null>      // Tauri: invoke('load_app_data'); browser: localStorage['papertiger.data.'+name]
+export async function saveJson(name: string, value: unknown): Promise<void>  // Tauri: invoke('save_app_data'); browser: localStorage (catch quota errors, log a warning)
+export function saveJsonDebounced(name: string, getValue: () => unknown, ms = 400): void  // one timer per name
+```
+
+### Voice store — `src/lib/voice.ts`
+```ts
+export interface VoiceTunings { formality: number; conciseness: number; technicality: number }   // 1..10
+export const DEFAULT_TUNINGS: VoiceTunings = { formality: 7, conciseness: 6, technicality: 8 }
+export function useVoice(): VoiceTunings
+export function getVoice(): VoiceTunings
+export function setTuning(key: keyof VoiceTunings, value: number): void    // clamps 1..10, saves (debounced) under 'voice'
+export function hydrateVoice(): Promise<void>                              // loadJson('voice') → state; call once at app start (main.tsx)
+export function describeVoice(t: VoiceTunings): string[]
+// maps each 1..10 value to one instruction line, three bands (1-3 / 4-7 / 8-10):
+//  formality:    'Use a conversational register; contractions are fine.' | 'Use a measured academic register.' | 'Use a formal academic register; no contractions, no first person.'
+//  conciseness:  'Develop points fully with supporting detail.' | 'Keep paragraphs focused; one idea per paragraph.' | 'Be concise: short sentences, no filler, no repetition.'
+//  technicality: 'Prefer plain language; explain any technical term.' | 'Use domain terminology where it is precise, briefly defined on first use.' | 'Use precise domain terminology and standard notation without simplification.'
+```
+`StyleScreen` reads/writes tunings through this store instead of `useState(mockStyleTunings)` (keep `mockStyleTunings` only for name/description/min/max metadata; the value comes from the store). Live preview text stays mock.
+
+### Writer prompt — `src/lib/writer.ts`
+`WriteContext` gains `style: string[]`. `buildSectionMessages` adds, after the section line:
+```
+Style:
+- <line>
+- <line>
+- <line>
+```
+`writeSection` fills `style: describeVoice(getVoice())`.
+
+### Persisted sources — `src/lib/sources.ts` + `src/lib/sourcesStore.ts`
+- `Source` gains `path?: string` (set for Tauri path inputs). `addedAt` serialises as ISO string.
+- Store persists under `'sources'` (debounced) on every change: `{ version: 1, sources: PersistedSource[] }` where
+  `PersistedSource = { id, name, kind, sizeBytes, addedAt: string, status: 'done' | 'error' | 'queued', pages, text, error?, path? }`.
+  In-flight statuses (`rendering`/`extracting`) are saved as `'queued'`.
+- `hydrateSources(): Promise<void>` (call once at app start from main.tsx, after `hydrateVoice`): loads, restores `done`/`error` sources as-is; a `queued` source with a `path` is restored and re-enqueued (`enqueue(id, { path })`), one without a path is dropped. Skip hydration if the store already has sources.
+- `text` can be large; keep the debounce so a page-by-page OCR run does not write on every token.
+
+### App start — `src/main.tsx`
+Before render: `applyTheme(readStoredMode())`, then `void hydrateVoice()`, then `void hydrateSources()` (fire-and-forget; stores notify when loaded).

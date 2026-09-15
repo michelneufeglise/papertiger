@@ -1,4 +1,6 @@
 use base64::Engine as _;
+use std::fs;
+use std::io::Write as _;
 use std::process::Command;
 use tauri::Manager;
 
@@ -62,6 +64,41 @@ fn file_size(path: String) -> Result<u64, String> {
   Ok(metadata.len())
 }
 
+fn app_data_file_path(app: &tauri::AppHandle, name: &str) -> Result<std::path::PathBuf, String> {
+  let valid = !name.is_empty()
+    && name
+      .chars()
+      .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+  if !valid {
+    return Err(format!("Invalid storage name: {name}"));
+  }
+  let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+  fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+  Ok(dir.join(format!("{name}.json")))
+}
+
+#[tauri::command]
+fn load_app_data(app: tauri::AppHandle, name: String) -> Result<Option<String>, String> {
+  let path = app_data_file_path(&app, &name)?;
+  match fs::read_to_string(&path) {
+    Ok(contents) => Ok(Some(contents)),
+    Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+    Err(e) => Err(e.to_string()),
+  }
+}
+
+#[tauri::command]
+fn save_app_data(app: tauri::AppHandle, name: String, contents: String) -> Result<(), String> {
+  let path = app_data_file_path(&app, &name)?;
+  let tmp_path = path.with_extension("json.tmp");
+  {
+    let mut file = fs::File::create(&tmp_path).map_err(|e| e.to_string())?;
+    file.write_all(contents.as_bytes()).map_err(|e| e.to_string())?;
+  }
+  fs::rename(&tmp_path, &path).map_err(|e| e.to_string())?;
+  Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -69,7 +106,9 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       hardware_info,
       read_file_base64,
-      file_size
+      file_size,
+      load_app_data,
+      save_app_data
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

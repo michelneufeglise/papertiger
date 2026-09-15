@@ -133,6 +133,11 @@ describing what was planned and what was implemented.
 - Verified in the browser against local Ollama with `qwen3:4b-instruct-2507-q4_K_M`: streamed chat reply, a real Results section streamed into the panel, Stop keeps partial text. Screenshots `docs/ux-v2-wizard-writer.png`, `docs/ux-v2-chat-real-writer.png`.
 - Not done: Voice tunings are not yet fed into the writer prompt; sources are not persisted across restarts; Gemma/DeepSeek variants were not pulled or exercised here (tags verified on ollama.com only).
 
+### 2026-09-15 — Voice tunings in the writer prompt, persisted sources (Sonnet)
+- `src/lib/voice.ts`: persisted tunings store (formality / conciseness / technicality, 1–10) with `describeVoice` mapping each value to one instruction line; the Voice screen sliders write to it. `writer.ts` adds a `Style:` block to the section prompt.
+- Persistence: Rust `load_app_data` / `save_app_data` (atomic write to `<name>.json` in the app data dir), `src/lib/storage.ts` (localStorage fallback in the browser, debounced saves). Sources persist with their text and Tauri path; on launch done/error sources are restored and unfinished ones with a path are re-queued. Hydration runs from `main.tsx`.
+- Verified: slider value survives a reload; an OCR'd source survives a reload with its text. Not persisted yet: the paper and the chat thread.
+
 <!-- Add new entries above this line, newest last. -->
 
 

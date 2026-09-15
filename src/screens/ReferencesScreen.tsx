@@ -124,6 +124,7 @@ export const ReferencesScreen: React.FC = () => {
           progress: { page: 0, pages: 0 },
           pages: 0,
           text: '',
+          path: 'path' in input ? input.path : undefined,
         }
         addSource(source)
         enqueue(id, input)

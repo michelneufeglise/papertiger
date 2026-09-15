@@ -1,13 +1,15 @@
 import { useSyncExternalStore } from 'react'
-import type { Source, SourceInput } from './sources'
+import type { Source, SourceInput, SourceKind } from './sources'
 import { processSource } from './sources'
 import { readSettings, subscribeSettings } from './settings'
 import { unloadModel } from './ollama'
+import { loadJson, saveJsonDebounced } from './storage'
 
 // External store with a cached snapshot (same pattern as settings.ts / paper.ts): `state`
 // is only ever reassigned (never mutated in place), so it stays referentially stable
 // between renders unless something actually changed — required for useSyncExternalStore
-// to avoid an infinite render loop. Not persisted: sources are re-added per session.
+// to avoid an infinite render loop. Persisted under the 'sources' key (see persist() below);
+// in-flight statuses are collapsed to 'queued' on save and resumed (or dropped) on hydrate.
 let state: Source[] = []
 
 type Listener = () => void
@@ -34,9 +36,109 @@ export function useSources(): Source[] {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
+// --- Persistence -----------------------------------------------------------
+//
+// Sources persist across launches so extracted text survives a reload. `text`
+// can be large and OCR streams progress frequently, so saves are debounced
+// (saveJsonDebounced's default 400ms) rather than firing on every update.
+
+type PersistedStatus = 'done' | 'error' | 'queued'
+
+interface PersistedSource {
+  id: string
+  name: string
+  kind: SourceKind
+  sizeBytes: number
+  addedAt: string
+  status: PersistedStatus
+  pages: number
+  text: string
+  error?: string
+  path?: string
+}
+
+interface PersistedSources {
+  version: 1
+  sources: PersistedSource[]
+}
+
+const SOURCES_STORAGE_KEY = 'sources'
+
+function collapseStatus(status: Source['status']): PersistedStatus {
+  if (status === 'done' || status === 'error') return status
+  return 'queued'
+}
+
+function toPersisted(source: Source): PersistedSource {
+  const persisted: PersistedSource = {
+    id: source.id,
+    name: source.name,
+    kind: source.kind,
+    sizeBytes: source.sizeBytes,
+    addedAt: source.addedAt.toISOString(),
+    status: collapseStatus(source.status),
+    pages: source.pages,
+    text: source.text,
+  }
+  if (source.error !== undefined) persisted.error = source.error
+  if (source.path !== undefined) persisted.path = source.path
+  return persisted
+}
+
+function persist(): void {
+  saveJsonDebounced(SOURCES_STORAGE_KEY, (): PersistedSources => ({
+    version: 1,
+    sources: state.map(toPersisted),
+  }))
+}
+
+/**
+ * Restores sources saved by a previous session. Done/error sources come back as-is; a
+ * queued source with a `path` (Tauri) is re-enqueued for processing, one without a path
+ * (a browser File that can't be recovered) is dropped. No-op if the store already has
+ * sources (e.g. hydrate was already called, or something added a source first).
+ */
+export async function hydrateSources(): Promise<void> {
+  if (state.length > 0) return
+
+  const loaded = await loadJson<PersistedSources>(SOURCES_STORAGE_KEY)
+  if (!loaded || !Array.isArray(loaded.sources) || loaded.sources.length === 0) return
+
+  const restored: Source[] = []
+  const toEnqueue: { id: string; path: string }[] = []
+
+  for (const p of loaded.sources) {
+    if (p.status === 'queued' && !p.path) continue // can't recover a browser File across reloads
+
+    const source: Source = {
+      id: p.id,
+      name: p.name,
+      kind: p.kind,
+      sizeBytes: p.sizeBytes,
+      addedAt: new Date(p.addedAt),
+      status: p.status,
+      progress: { page: p.status === 'done' ? p.pages : 0, pages: p.pages },
+      pages: p.pages,
+      text: p.text,
+      error: p.error,
+      path: p.path,
+    }
+    restored.push(source)
+    if (p.status === 'queued' && p.path) toEnqueue.push({ id: p.id, path: p.path })
+  }
+
+  if (restored.length === 0) return
+
+  state = restored
+  notify()
+
+  for (const item of toEnqueue) enqueue(item.id, { path: item.path })
+}
+
 export function addSource(source: Source): void {
   state = [source, ...state]
   notify()
+  persist()
 }
 
 export function updateSource(id: string, patch: Partial<Source>): void {
@@ -49,6 +151,7 @@ export function updateSource(id: string, patch: Partial<Source>): void {
   if (!changed) return
   state = next
   notify()
+  persist()
 }
 
 export function removeSource(id: string): void {
@@ -61,6 +164,7 @@ export function removeSource(id: string): void {
   if (next.length === state.length) return
   state = next
   notify()
+  persist()
   runQueue()
 }
 

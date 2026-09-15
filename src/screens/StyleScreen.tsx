@@ -7,7 +7,15 @@ import {
   mockStyleTunings,
   mockPreviewText,
 } from '../mock/styleMetrics'
-import type { StyleMetric, StyleTuning } from '../mock/styleMetrics'
+import type { StyleMetric } from '../mock/styleMetrics'
+import { useVoice, setTuning, type VoiceTunings } from '../lib/voice'
+
+/** mockStyleTunings only supplies name/description/min/max now — the live value comes from the voice store. */
+const TUNING_KEY_BY_NAME: Record<string, keyof VoiceTunings> = {
+  Formality: 'formality',
+  Conciseness: 'conciseness',
+  Technicality: 'technicality',
+}
 
 /** Each metric has a different scale, so the mini bar needs a per-unit read on "how full". */
 const metricFill = (metric: StyleMetric): number => {
@@ -26,13 +34,13 @@ const metricFill = (metric: StyleMetric): number => {
 }
 
 export const StyleScreen: React.FC = () => {
-  const [tunings, setTunings] = useState<StyleTuning[]>(mockStyleTunings)
+  const voice = useVoice()
   const [isRetraining, setIsRetraining] = useState(false)
 
   const handleTuningChange = (name: string, value: number) => {
-    setTunings(prev =>
-      prev.map(t => (t.name === name ? { ...t, value } : t))
-    )
+    const key = TUNING_KEY_BY_NAME[name]
+    if (!key) return
+    setTuning(key, value)
   }
 
   const handleRetrain = () => {
@@ -125,8 +133,10 @@ export const StyleScreen: React.FC = () => {
 
         {/* Tuning */}
         <GlassCard className="p-6 space-y-6" variant="raised">
-          {tunings.map((tuning, idx) => {
-            const pct = ((tuning.value - tuning.min) / (tuning.max - tuning.min)) * 100
+          {mockStyleTunings.map((tuning, idx) => {
+            const key = TUNING_KEY_BY_NAME[tuning.name]
+            const value = key ? voice[key] : tuning.value
+            const pct = ((value - tuning.min) / (tuning.max - tuning.min)) * 100
             return (
               <motion.div
                 key={tuning.name}
@@ -137,7 +147,7 @@ export const StyleScreen: React.FC = () => {
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-semibold text-fg">{tuning.name}</label>
                   <Chip tone="tiger" mono>
-                    {tuning.value} / {tuning.max}
+                    {value} / {tuning.max}
                   </Chip>
                 </div>
 
@@ -147,7 +157,7 @@ export const StyleScreen: React.FC = () => {
                     type="range"
                     min={tuning.min}
                     max={tuning.max}
-                    value={tuning.value}
+                    value={value}
                     onChange={e =>
                       handleTuningChange(tuning.name, parseInt(e.target.value, 10))
                     }

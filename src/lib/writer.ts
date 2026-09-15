@@ -4,6 +4,7 @@ import { WRITER_NUM_CTX, writerById } from './models'
 import { readSettings } from './settings'
 import { getSources } from './sourcesStore'
 import { getPaper, updateSection } from './paper'
+import { describeVoice, getVoice } from './voice'
 
 export interface WriteContext {
   paperTitle: string
@@ -11,6 +12,7 @@ export interface WriteContext {
   otherSections: { title: string; content: string }[]
   sources: { name: string; text: string }[]
   intent: string[] // recent user chat messages
+  style: string[]
 }
 
 const SYSTEM_PROMPT =
@@ -27,6 +29,12 @@ export function buildSectionMessages(ctx: WriteContext): ChatMessage[] {
   lines.push(`Paper title: ${ctx.paperTitle}`)
   lines.push('')
   lines.push(`Write the section: ${ctx.sectionTitle}`)
+
+  if (ctx.style.length > 0) {
+    lines.push('')
+    lines.push('Style:')
+    for (const line of ctx.style) lines.push(`- ${line}`)
+  }
 
   const summaries = ctx.otherSections
     .map(section => ({ title: section.title, summary: section.content.slice(0, OTHER_SECTION_SUMMARY_CHARS).trim() }))
@@ -95,6 +103,7 @@ export async function writeSection(sectionId: string, signal?: AbortSignal): Pro
       .map(s => ({ title: s.title, content: s.content })),
     sources: sources.map(s => ({ name: s.name, text: s.text })),
     intent: intentProvider(),
+    style: describeVoice(getVoice()),
   }
 
   const messages = buildSectionMessages(ctx)

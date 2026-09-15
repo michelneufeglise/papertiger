@@ -29,6 +29,8 @@ export interface Source {
   pages: number
   text: string
   error?: string
+  /** The Tauri filesystem path this source was added from, when applicable (browser file inputs have none). */
+  path?: string
 }
 
 export type SourceInput = { path: string } | { file: File }

@@ -194,3 +194,55 @@ Sentence case. Buttons say what happens: "Generate", "Export", "Choose files", "
 - `backdrop-filter` only on rail, title bar, composer, cards, modal. Never on the page.
 - One aurora blob, blurred once via `filter` on a small element; no `filter` on large containers.
 - No infinite animations except the stripes while working, the typing dots, and the caret.
+
+## Paper panel (right side, added 2026-09-15)
+A persistent right-hand panel that shows the paper as it is being written, visible on
+Chat, Sources and Voice (hidden on Draft, which is the editor itself, and on Setup/Settings).
+
+**State** lives in `src/lib/paper.ts` (external store, `useSyncExternalStore`):
+```ts
+export type SectionStatus = 'empty' | 'writing' | 'done'
+export interface PaperSection { id: string; title: string; content: string; status: SectionStatus }
+export interface Paper { title: string; sections: PaperSection[] }
+export function usePaper(): Paper
+export function setTitle(title: string): void
+export function updateSection(id: string, patch: Partial<PaperSection>): void
+export function wordCount(paper: Paper): number
+export function generateSection(id: string, signal?: AbortSignal): Promise<void>
+// mock token stream (same sample text as the current EditorScreen), sets status 'writing',
+// appends ~1 char / 15 ms to content, ends with status 'done'. Only one generation at a time.
+```
+Initial state: the current mock title; Abstract and Introduction `done` with the mock
+content, Methods / Results / Discussion `empty` with content '' — so the shimmer is visible
+on first launch. `EditorScreen` must be refactored to read/write this store instead of its
+own `useState` (title, sections, generation), keeping its UI unchanged.
+
+**Panel** (`src/components/PaperPanel.tsx`), 360 px wide, `.glass` on the left edge only
+(`border-l border-line`, no rounded corners), full height under the title bar:
+- Header row: mono uppercase `PAPER` + mono `1,240 words`, ghost icon button "Open in Draft"
+  (lucide `PenLine`, navigates `/editor`), and a collapse toggle (lucide `PanelRightClose` /
+  `PanelRightOpen`). Collapsed state is a 44 px strip with a vertical mono label `PAPER` and
+  the open toggle; remember collapsed in `localStorage['papertiger.paperPanel']`.
+- Body: a scrollable "sheet" — `bg-panel` inset, `rounded-[var(--r-lg)]`, `p-6`. Title in
+  display 20px/700, then each section: mono uppercase eyebrow (section title), then
+  - `done`: paragraphs in 13px/1.6 DM Sans `text-fg-muted` (first 900 characters + "…" if longer; the
+    panel is a preview, not the editor).
+  - `writing`: the streamed content so far in `text-fg`, followed by one shimmer line, and a tiger
+    caret `▍` (`.caret-blink`) at the end of the text.
+  - `empty`: 4 shimmer lines of varying width (100 / 92 / 96 / 60 %), 10 px tall, `rounded-full`.
+- The section currently `writing` gets a 2 px tiger bar on its left edge and the sheet auto-scrolls
+  to it while writing.
+- Footer line, mono `text-fg-faint`: `3 of 5 sections written`.
+
+**Shimmer** (`.shimmer` in `src/index.css`): `background: linear-gradient(90deg, var(--panel-2) 0%,
+color-mix(in srgb, var(--tiger) 22%, var(--panel-2)) 50%, var(--panel-2) 100%); background-size: 200% 100%;
+animation: shimmer 1.6s ease-in-out infinite;` with `@keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }`.
+Stops under `prefers-reduced-motion` (static `var(--panel-2)`).
+
+**Frame**: in `App.tsx`, render `<PaperPanel />` as the right-most child of the main flex row
+when `location.pathname` is `/`, `/references` or `/style`. Content column stays `flex-1 min-w-0`.
+
+**Chat hook-up** (demo of the loop): when the user sends a message that contains "write", "draft"
+or "abstract" (case-insensitive), the canned assistant reply becomes "On it — drafting the next
+section on the right." and `generateSection` runs on the first `empty` section (if any). Other
+messages keep the existing random replies.

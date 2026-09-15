@@ -24,3 +24,5 @@ export type { StripeProps } from './Stripe'
 
 export { Kbd } from './Kbd'
 export type { KbdProps } from './Kbd'
+
+export { PaperPanel } from '../PaperPanel'

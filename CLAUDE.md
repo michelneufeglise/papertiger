@@ -107,6 +107,20 @@ describing what was planned and what was implemented.
 - Both quants emit a short junk preamble before the first block (`v`, `s`, `v: T1`); the OCR parser must discard everything before the first `<label> [x, y, x, y]` line.
 - Not yet verified: real timings on an Intel Air.
 
+### 2026-09-15 — Phase 2 plan: real OCR, hardware check, first-run wizard (Opus)
+- Contract in `docs/PHASE2-OCR.md`: Rust `hardware_info` / `read_file_base64` commands, `src/lib/{hardware,models,settings,ollama,sources}.ts`, wizard at `/setup` (welcome → your Mac → model choice with recommended Q4/Q8 card → download with progress → done), Sources screen wired to Ollama with pdf.js page rendering, mammoth for DOCX, native dialog + drag-drop.
+- Recommendation rule: Apple Silicon with ≥16 GB → q8_0, otherwise Q4_K_M. OCR context capped at 8192, one page at a time, junk preamble discarded by the parser.
+- Sonnet split: pass 1 plumbing (Rust + lib modules + deps), pass 2 wizard/App/Settings and Sources screen in parallel.
+
+### 2026-09-15 — Phase 2 implemented (Sonnet) + paper panel
+- Rust: `hardware_info`, `read_file_base64`, `file_size` commands; `tauri-plugin-dialog` registered (`dialog:default` capability).
+- Libs: `src/lib/{tauri,hardware,models,settings,ollama,sources,setup,paper}.ts`. Settings and paper stores use `useSyncExternalStore` with cached snapshots (an unstable snapshot caused an infinite render loop — keep snapshots referentially stable).
+- Wizard `/setup`: welcome → your Mac (chip, memory, macOS, cores, Ollama status with re-check) → model choice (recommended Q4/Q8 card, reason line) → download (skips when the model is already pulled, otherwise streams `/api/pull` progress) → done. App redirects to `/setup` until `setupDone`.
+- Sources: native file dialog + native drag-drop (HTML5 fallback in the browser), pdf.js page rendering, mammoth for DOCX, sequential OCR queue through Ollama with per-page progress, preview modal with copy. Verified end to end in the browser with `docs/sample-page.pdf` (real Ollama, q4).
+- Paper panel: right-hand live preview of the draft on Chat/Sources/Voice, shimmer placeholders for unwritten sections, streaming with caret + tiger bar; Draft editor and panel share `src/lib/paper.ts`. Chat messages containing write/draft/abstract trigger a mock section generation.
+- Screenshots: `docs/ux-v2-wizard-*.png`, `docs/ux-v2-sources-panel.png`, `docs/ux-v2-sources-extracting.png`, `docs/ux-v2-chat-paper-writing.png`.
+- Not yet done: exercising the Tauri-only paths (native dialog, native drag-drop, `hardware_info`) by hand inside the `.app` — the code paths compile and the browser fallbacks are verified; the writer LLM is still mocked.
+
 <!-- Add new entries above this line, newest last. -->
 
 

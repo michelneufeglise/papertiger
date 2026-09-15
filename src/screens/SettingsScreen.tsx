@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Monitor, type LucideIcon } from 'lucide-react'
 import { GlassCard, GlassButton, GlassInput, Chip } from '../components/ui'
 import { useTheme, type ThemeMode } from '../lib/theme'
+import { useSettings } from '../lib/settings'
+import { OCR_MODELS } from '../lib/models'
 
 const themeOptions: { mode: ThemeMode; label: string; icon: LucideIcon }[] = [
   { mode: 'light', label: 'Paper', icon: Sun },
@@ -20,7 +23,11 @@ const Hairline: React.FC = () => <div className="border-t border-line" />
 
 export const SettingsScreen: React.FC = () => {
   const { mode, setMode, isDark } = useTheme()
+  const navigate = useNavigate()
+  const settings = useSettings()
   const [dbPath, setDbPath] = useState('/Users/michelneufeglise/.papertiger/data.db')
+
+  const ocrModel = settings.ocrQuant ? OCR_MODELS[settings.ocrQuant] : null
 
   const mockDBSize = '24.5 MB'
   const mockDBEntries = '1,247 memories'
@@ -90,10 +97,23 @@ export const SettingsScreen: React.FC = () => {
 
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-fg">OCR · unlimited-OCR</p>
-                <p className="text-xs text-fg-muted mt-1">Extracts text from documents and images.</p>
+                <p className="text-sm font-semibold text-fg">
+                  {ocrModel ? ocrModel.label : 'OCR · not set up'}
+                </p>
+                {ocrModel ? (
+                  <p className="font-mono text-xs text-fg-muted mt-1">{ocrModel.tag}</p>
+                ) : (
+                  <p className="text-xs text-fg-muted mt-1">Extracts text from documents and images.</p>
+                )}
               </div>
-              <Chip tone="mint" mono>ON-DEVICE</Chip>
+              <div className="flex items-center gap-2 shrink-0">
+                {ocrModel && (
+                  <Chip tone="mint" mono>ON-DEVICE</Chip>
+                )}
+                <GlassButton variant="ghost" size="sm" onClick={() => navigate('/setup')}>
+                  Change
+                </GlassButton>
+              </div>
             </div>
 
             <Hairline />

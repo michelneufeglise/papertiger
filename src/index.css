@@ -160,6 +160,30 @@ html.light {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Shimmer — placeholder text while a section hasn't been written yet      */
+/* ---------------------------------------------------------------------- */
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--panel-2) 0%,
+    color-mix(in srgb, var(--tiger) 22%, var(--panel-2)) 50%,
+    var(--panel-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
 /* Caret                                                                    */
 /* ---------------------------------------------------------------------- */
 
@@ -271,6 +295,11 @@ input[type="range"]::-moz-range-thumb {
   .caret-blink {
     animation: none;
     opacity: 1;
+  }
+
+  .shimmer {
+    animation: none;
+    background: var(--panel-2);
   }
 
   *,

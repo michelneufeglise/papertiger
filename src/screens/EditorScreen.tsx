@@ -3,90 +3,68 @@ import { motion } from 'framer-motion'
 import clsx from 'clsx'
 import { Zap, Download } from 'lucide-react'
 import { GlassCard, GlassButton, GlassTextarea, Stripe } from '../components/ui'
-import { mockPaperSections, mockPaperTitle, calculateWordCount } from '../mock/paper'
-import type { PaperSection } from '../mock/paper'
-
-const SAMPLE_GENERATED_TEXT =
-  'Recent advances in machine learning have demonstrated remarkable potential in addressing complex clinical challenges. Our approach leverages state-of-the-art deep learning architectures to process multimodal patient data streams. The architectural design incorporates attention mechanisms to capture temporal dependencies and clinical significance indicators. Implementation across diverse healthcare settings has revealed consistent improvements in predictive accuracy and clinical utility. Furthermore, the model exhibits robust generalization across different patient populations and clinical contexts. Integration into existing clinical workflows requires careful consideration of alert fatigue and clinician acceptance factors.'
+import { usePaper, setTitle, updateSection, generateSection, wordCount } from '../lib/paper'
+import type { Paper } from '../lib/paper'
 
 export const EditorScreen: React.FC = () => {
-  const [sections, setSections] = useState<PaperSection[]>(mockPaperSections)
-  const [activeSection, setActiveSection] = useState(mockPaperSections[0].id)
-  const [title, setTitle] = useState(mockPaperTitle)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedText, setGeneratedText] = useState('')
-  const generateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const paper = usePaper()
+  const [activeSection, setActiveSection] = useState(paper.sections[0]?.id ?? '')
+  // Snapshot of the active section's content taken right before a generation
+  // starts, so the textarea stays frozen while the streamed text (which lives
+  // in the store, growing live) is shown separately below it with a caret.
+  const [generationBase, setGenerationBase] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const currentSection = paper.sections.find(s => s.id === activeSection) ?? paper.sections[0]
+  const isGenerating = paper.sections.some(s => s.status === 'writing')
+  const isCurrentGenerating = currentSection?.status === 'writing'
+  const totalWordCount = wordCount(paper)
 
   // While the tiger writes, size the textarea to its content so the streamed text follows it directly.
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
-    el.style.height = isGenerating ? `${el.scrollHeight}px` : ''
-  }, [isGenerating, activeSection])
-
-  useEffect(() => {
-    return () => {
-      if (generateIntervalRef.current) clearInterval(generateIntervalRef.current)
-    }
-  }, [])
-
-  const currentSection = sections.find(s => s.id === activeSection)
-  const wordCount = calculateWordCount(sections)
+    el.style.height = isCurrentGenerating ? `${el.scrollHeight}px` : ''
+  }, [isCurrentGenerating, activeSection])
 
   const handleSectionUpdate = (sectionId: string, content: string) => {
-    setSections(prev =>
-      prev.map(section =>
-        section.id === sectionId ? { ...section, content } : section
-      )
-    )
+    updateSection(sectionId, { content })
   }
 
   const handleGenerateSection = () => {
     if (!currentSection || isGenerating) return
-    setIsGenerating(true)
-    setGeneratedText('')
-
-    const sectionId = currentSection.id
-    const baseContent = currentSection.content
-
-    // Simulate token-by-token text generation
-    let charIndex = 0
-    generateIntervalRef.current = setInterval(() => {
-      if (charIndex < SAMPLE_GENERATED_TEXT.length) {
-        setGeneratedText(SAMPLE_GENERATED_TEXT.substring(0, charIndex + 1))
-        charIndex++
-      } else {
-        if (generateIntervalRef.current) clearInterval(generateIntervalRef.current)
-        setIsGenerating(false)
-        setGeneratedText('')
-        // Auto-append to section
-        handleSectionUpdate(sectionId, `${baseContent}\n\n${SAMPLE_GENERATED_TEXT}`)
-      }
-    }, 15)
+    setGenerationBase(currentSection.content)
+    void generateSection(currentSection.id)
   }
 
   const handleExport = () => {
     // Mock export
-    const content = `${title}\n\n${sections
+    const content = `${paper.title}\n\n${paper.sections
       .map(s => `${s.title}\n${s.content}`)
       .join('\n\n')}`
     console.log('Exported:', content)
   }
+
+  // The streamed text produced during this generation, isolated from the
+  // frozen base content the textarea still shows.
+  const streamedText =
+    isCurrentGenerating && currentSection
+      ? currentSection.content.slice(generationBase.length).replace(/^\n\n/, '')
+      : ''
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Top bar */}
       <div className="shrink-0 flex items-center gap-4 px-6 h-16 border-b border-line">
         <input
-          value={title}
+          value={paper.title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Untitled paper"
           className="min-w-0 flex-1 bg-transparent border-none outline-none font-display text-[22px] font-bold text-fg placeholder:text-fg-faint caret-tiger"
         />
 
         <div className="shrink-0 font-mono text-xs text-fg-muted whitespace-nowrap">
-          {wordCount.toLocaleString()} words · {sections.length} sections
+          {totalWordCount.toLocaleString()} words · {paper.sections.length} sections
         </div>
 
         <GlassButton
@@ -97,7 +75,7 @@ export const EditorScreen: React.FC = () => {
           icon={<Zap size={14} />}
           className="shrink-0"
         >
-          {isGenerating ? 'Writing…' : 'Generate'}
+          {isCurrentGenerating ? 'Writing…' : 'Generate'}
         </GlassButton>
 
         <GlassButton
@@ -120,9 +98,9 @@ export const EditorScreen: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            {sections.map(section => {
+            {paper.sections.map(section => {
               const active = section.id === activeSection
-              const sectionWords = calculateWordCount([section])
+              const sectionWords = wordCount({ title: '', sections: [section] } satisfies Paper)
 
               return (
                 <button
@@ -160,7 +138,7 @@ export const EditorScreen: React.FC = () => {
               variant="raised"
               className="relative min-h-full flex flex-col overflow-hidden p-8"
             >
-              {isGenerating && (
+              {isCurrentGenerating && (
                 <Stripe active className="absolute top-0 left-0 right-0 w-full rounded-none" />
               )}
 
@@ -168,30 +146,30 @@ export const EditorScreen: React.FC = () => {
                 {currentSection.title}
               </h2>
 
-              {isGenerating && (
+              {isCurrentGenerating && (
                 <div className="mt-1 font-mono text-xs text-tiger">writing…</div>
               )}
 
               <GlassTextarea
                 ref={textareaRef}
-                value={currentSection.content}
+                value={isCurrentGenerating ? generationBase : currentSection.content}
                 onChange={e => handleSectionUpdate(currentSection.id, e.target.value)}
                 placeholder="Start writing, or generate a draft…"
-                disabled={isGenerating}
+                disabled={isCurrentGenerating}
                 className={`mt-4 min-h-[200px] !bg-transparent !border-none !shadow-none !rounded-none !p-0 !text-base leading-[1.7] text-fg placeholder:text-fg-faint disabled:!opacity-100 ${
-                  isGenerating ? 'flex-none' : 'flex-1'
+                  isCurrentGenerating ? 'flex-none' : 'flex-1'
                 }`}
               />
 
-              {isGenerating && (
+              {isCurrentGenerating && (
                 <p className="mt-2 text-base leading-[1.7] text-fg whitespace-pre-wrap">
-                  {generatedText}
+                  {streamedText}
                   <span className="text-tiger caret-blink">▍</span>
                 </p>
               )}
 
               <div className="mt-4 font-mono text-xs text-fg-faint">
-                {calculateWordCount([currentSection])} words
+                {wordCount({ title: '', sections: [currentSection] } satisfies Paper)} words
               </div>
             </GlassCard>
           )}

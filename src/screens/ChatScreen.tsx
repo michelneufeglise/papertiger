@@ -4,6 +4,9 @@ import { Send, Paperclip, X } from 'lucide-react'
 import { GlassButton, Kbd } from '../components/ui'
 import { mockMessages, getRandomAssistantReply } from '../mock/messages'
 import type { Message } from '../mock/messages'
+import { generateSection, getPaper } from '../lib/paper'
+
+const WRITE_KEYWORDS = ['write', 'draft', 'abstract']
 
 const MAX_TEXTAREA_LINES = 6
 const LINE_HEIGHT_PX = 20 // approx line-height for the 14px composer text
@@ -73,16 +76,26 @@ export const ChatScreen: React.FC = () => {
       textareaRef.current.style.height = `${MIN_TEXTAREA_HEIGHT_PX}px`
     }
 
+    const lowerContent = content.toLowerCase()
+    const wantsWriting = WRITE_KEYWORDS.some(keyword => lowerContent.includes(keyword))
+
     // Simulate assistant response delay
     setTimeout(() => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: getRandomAssistantReply(),
+        content: wantsWriting
+          ? 'On it — drafting the next section on the right.'
+          : getRandomAssistantReply(),
         timestamp: new Date(),
       }
       setMessages(prev => [...prev, assistantMessage])
       setIsLoading(false)
+
+      if (wantsWriting) {
+        const emptySection = getPaper().sections.find(section => section.status === 'empty')
+        if (emptySection) void generateSection(emptySection.id)
+      }
     }, 800)
   }
 

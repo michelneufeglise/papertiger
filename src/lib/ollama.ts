@@ -247,3 +247,168 @@ export async function ocrImage(
   const text = blocksToText(blocks)
   return { raw, blocks, text }
 }
+
+// --- Chat streaming ------------------------------------------------------
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+/** Alias for ChatMessage, re-exported to avoid a name clash with chat.ts's own ChatMessage. */
+export type OllamaChatMessage = ChatMessage
+
+export interface ChatOptions {
+  think?: boolean
+  numCtx?: number
+  temperature?: number
+  keepAlive?: string
+}
+
+class ChatHttpError extends OllamaError {
+  status: number
+  bodyText: string
+
+  constructor(status: number, bodyText: string) {
+    super('http', `POST /api/chat failed: ${status}`)
+    this.status = status
+    this.bodyText = bodyText
+  }
+}
+
+async function chatOnce(
+  tag: string,
+  messages: ChatMessage[],
+  onToken: (token: string, full: string) => void,
+  opts: ChatOptions | undefined,
+  signal: AbortSignal | undefined,
+  includeThink: boolean,
+): Promise<string> {
+  const body: Record<string, unknown> = {
+    model: tag,
+    messages,
+    stream: true,
+    options: {
+      num_ctx: opts?.numCtx,
+      temperature: opts?.temperature,
+    },
+  }
+  if (opts?.keepAlive !== undefined) body.keep_alive = opts.keepAlive
+  if (includeThink && opts?.think !== undefined) body.think = opts.think
+
+  const res = await fetchOllama('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new ChatHttpError(res.status, text)
+  }
+  if (!res.body) throw new OllamaError('http', 'POST /api/chat returned no body.')
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let full = ''
+
+  const processLine = (line: string) => {
+    const trimmed = line.trim()
+    if (!trimmed) return
+    let parsed: { message?: { content?: unknown }; done?: unknown; error?: unknown }
+    try {
+      parsed = JSON.parse(trimmed)
+    } catch {
+      throw new OllamaError('parse', `Could not parse chat stream line: ${trimmed}`)
+    }
+    if (parsed.error) throw new OllamaError('http', String(parsed.error))
+    const content = typeof parsed.message?.content === 'string' ? parsed.message.content : ''
+    if (content) {
+      full += content
+      onToken(content, full)
+    }
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      let newlineIndex = buffer.indexOf('\n')
+      while (newlineIndex >= 0) {
+        const line = buffer.slice(0, newlineIndex)
+        buffer = buffer.slice(newlineIndex + 1)
+        processLine(line)
+        newlineIndex = buffer.indexOf('\n')
+      }
+    }
+    const trailing = buffer.trim()
+    if (trailing) processLine(trailing)
+  } catch (e) {
+    if (isAbortError(e)) return full
+    throw e
+  }
+
+  return full
+}
+
+/**
+ * Streams a chat completion from Ollama, calling `onToken(token, full)` for each
+ * chunk of assistant text. Returns the full assistant text. Aborting `signal`
+ * resolves with whatever text streamed so far rather than throwing.
+ */
+export async function chatStream(
+  tag: string,
+  messages: ChatMessage[],
+  onToken: (token: string, full: string) => void,
+  opts?: ChatOptions,
+  signal?: AbortSignal,
+): Promise<string> {
+  try {
+    return await chatOnce(tag, messages, onToken, opts, signal, true)
+  } catch (e) {
+    if (isAbortError(e)) return ''
+
+    if (
+      e instanceof ChatHttpError &&
+      e.status === 400 &&
+      opts?.think !== undefined &&
+      /think/i.test(e.bodyText)
+    ) {
+      try {
+        return await chatOnce(tag, messages, onToken, opts, signal, false)
+      } catch (retryError) {
+        if (isAbortError(retryError)) return ''
+        throw retryError
+      }
+    }
+
+    throw e
+  }
+}
+
+/** Removes <think>…</think> blocks, including an unterminated leading <think> (still streaming). */
+export function stripThinking(text: string): string {
+  let result = text.replace(/<think>[\s\S]*?<\/think>/gi, '')
+  const idx = result.search(/<think>/i)
+  if (idx !== -1) {
+    result = result.slice(0, idx)
+  }
+  return result.trim()
+}
+
+/** Best-effort: asks Ollama to unload a model immediately. Errors are ignored. */
+export async function unloadModel(tag: string): Promise<void> {
+  try {
+    await fetch(`${BASE_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: tag, keep_alive: 0 }),
+    })
+  } catch {
+    // Best-effort only — ignore offline/network errors.
+  }
+}

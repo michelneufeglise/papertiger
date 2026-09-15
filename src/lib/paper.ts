@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { mockPaperSections, mockPaperTitle } from '../mock/paper'
+import { readSettings } from './settings'
+import { writeSection } from './writer'
 
 export type SectionStatus = 'empty' | 'writing' | 'done'
 
@@ -91,11 +93,11 @@ export function wordCount(paper: Paper): number {
 let isGenerating = false
 
 /**
- * Mock token stream: appends ~1 character every 15ms to the section's content,
- * setting status to 'writing' while running and 'done' when finished. Honours
- * an AbortSignal (stops mid-stream, leaving status as 'writing' with whatever
- * content streamed so far). Only one generation runs at a time — a second call
- * while one is in flight resolves immediately without doing anything.
+ * Generates a section's content. Delegates to the real writer (`writeSection`,
+ * streaming from Ollama) when a writer model is configured in settings; otherwise
+ * falls back to the mock character stream below. Only one generation runs at a
+ * time — a second call while one is in flight resolves immediately without doing
+ * anything.
  */
 export function generateSection(id: string, signal?: AbortSignal): Promise<void> {
   if (isGenerating) return Promise.resolve()
@@ -104,6 +106,26 @@ export function generateSection(id: string, signal?: AbortSignal): Promise<void>
   if (!section) return Promise.resolve()
 
   if (signal?.aborted) return Promise.resolve()
+
+  if (readSettings().writerTag) {
+    isGenerating = true
+    return writeSection(id, signal).finally(() => {
+      isGenerating = false
+    })
+  }
+
+  return generateSectionMock(id, signal)
+}
+
+/**
+ * Mock token stream: appends ~1 character every 15ms to the section's content,
+ * setting status to 'writing' while running and 'done' when finished. Honours
+ * an AbortSignal (stops mid-stream, leaving status as 'writing' with whatever
+ * content streamed so far).
+ */
+function generateSectionMock(id: string, signal?: AbortSignal): Promise<void> {
+  const section = state.sections.find(s => s.id === id)
+  if (!section) return Promise.resolve()
 
   isGenerating = true
   const baseContent = section.content

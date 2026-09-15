@@ -121,6 +121,18 @@ describing what was planned and what was implemented.
 - Screenshots: `docs/ux-v2-wizard-*.png`, `docs/ux-v2-sources-panel.png`, `docs/ux-v2-sources-extracting.png`, `docs/ux-v2-chat-paper-writing.png`.
 - Not yet done: exercising the Tauri-only paths (native dialog, native drag-drop, `hardware_info`) by hand inside the `.app` — the code paths compile and the browser fallbacks are verified; the writer LLM is still mocked.
 
+### 2026-09-15 — Phase 3 plan: writer LLM via Ollama, optional writer step (Opus)
+- Contract in `docs/PHASE3-WRITER.md`. Writer catalog: Qwen 3 (4B/8B), Gemma 3 (4B/12B), DeepSeek-R1 (1.5B/8B), each Q4_K_M and Q8_0, exact Ollama tags verified on ollama.com. Fit rule against the hardware check: resident ≤ RAM − 3 GB fits, ≤ RAM − 1.5 GB tight, else not offered; Intel gets a CPU-speed note. Recommendation = best Qwen that fits (Intel → Qwen3 4B Q4).
+- Wizard gains an optional WRITER step (skippable) and a multi-model download list; Settings can reopen the wizard at that step.
+- Sources move to a shared store (survive navigation, readable by the writer; OCR model unloaded after the queue drains). Real streaming generation through `/api/chat` feeds the paper store (panel + editor); chat replies come from the writer when configured, canned otherwise.
+
+### 2026-09-15 — Phase 3 implemented (Sonnet): writer LLM, optional writer step
+- Catalog + fit in `src/lib/models.ts` / `hardware.ts` (12 writer variants, `writerFit`, `recommendWriter`). Wizard has the WRITER step (family cards, Q4/Q8 pills with fits/tight/no states, recommended dot, Skip) and a multi-row DOWNLOAD list; `/setup?step=writer` deep link from Settings.
+- Runtime: `src/lib/ollama.ts` `chatStream` (NDJSON, `think:false` for hybrid models, retry without it), `stripThinking`, `unloadModel`; `src/lib/writer.ts` builds the section prompt (title, other sections, chat intent, ≤9000 chars of source excerpts) and streams into the paper store; `src/lib/chat.ts` is the chat store (real replies when a writer is set, canned otherwise). Draft requests in chat get a fixed one-line reply and go straight to the writer so only one generation runs at a time.
+- `src/lib/sourcesStore.ts` owns sources + the OCR queue (survives navigation; unloads the OCR model when the queue drains).
+- Verified in the browser against local Ollama with `qwen3:4b-instruct-2507-q4_K_M`: streamed chat reply, a real Results section streamed into the panel, Stop keeps partial text. Screenshots `docs/ux-v2-wizard-writer.png`, `docs/ux-v2-chat-real-writer.png`.
+- Not done: Voice tunings are not yet fed into the writer prompt; sources are not persisted across restarts; Gemma/DeepSeek variants were not pulled or exercised here (tags verified on ollama.com only).
+
 <!-- Add new entries above this line, newest last. -->
 
 

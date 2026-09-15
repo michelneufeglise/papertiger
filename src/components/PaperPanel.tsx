@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PenLine, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { usePaper, wordCount } from '../lib/paper'
+import { useSettings } from '../lib/settings'
+import { writerById } from '../lib/models'
 
 const COLLAPSE_KEY = 'papertiger.paperPanel'
 const PREVIEW_CHAR_LIMIT = 900
@@ -30,12 +32,15 @@ const ShimmerLine: React.FC<{ width: string }> = ({ width }) => (
 export const PaperPanel: React.FC = () => {
   const navigate = useNavigate()
   const paper = usePaper()
+  const settings = useSettings()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const writingSectionRef = useRef<HTMLDivElement>(null)
 
   const words = wordCount(paper)
   const doneCount = paper.sections.filter(s => s.status === 'done').length
   const writingSection = paper.sections.find(s => s.status === 'writing')
+  const activeWriter = settings.writerId ? writerById(settings.writerId) : undefined
+  const showWritingWith = writingSection !== undefined && activeWriter !== undefined
 
   useEffect(() => {
     writeCollapsed(collapsed)
@@ -97,6 +102,12 @@ export const PaperPanel: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {showWritingWith && (
+        <div className="shrink-0 px-4 py-1.5 border-b border-line font-mono text-[11px] text-fg-faint">
+          writing with {activeWriter.label}
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 min-h-0 overflow-y-auto p-3">

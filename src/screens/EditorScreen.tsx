@@ -1,10 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import clsx from 'clsx'
-import { Zap, Download } from 'lucide-react'
+import { Zap, Download, Square } from 'lucide-react'
 import { GlassCard, GlassButton, GlassTextarea, Stripe } from '../components/ui'
 import { usePaper, setTitle, updateSection, generateSection, wordCount } from '../lib/paper'
 import type { Paper } from '../lib/paper'
+
+interface GenerationError {
+  sectionId: string
+  message: string
+}
 
 export const EditorScreen: React.FC = () => {
   const paper = usePaper()
@@ -13,7 +18,9 @@ export const EditorScreen: React.FC = () => {
   // starts, so the textarea stays frozen while the streamed text (which lives
   // in the store, growing live) is shown separately below it with a caret.
   const [generationBase, setGenerationBase] = useState('')
+  const [generationError, setGenerationError] = useState<GenerationError | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const currentSection = paper.sections.find(s => s.id === activeSection) ?? paper.sections[0]
   const isGenerating = paper.sections.some(s => s.status === 'writing')
@@ -33,8 +40,18 @@ export const EditorScreen: React.FC = () => {
 
   const handleGenerateSection = () => {
     if (!currentSection || isGenerating) return
+    setGenerationError(null)
     setGenerationBase(currentSection.content)
-    void generateSection(currentSection.id)
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+    generateSection(currentSection.id, controller.signal).catch((e: unknown) => {
+      const message = e instanceof Error ? e.message : String(e)
+      setGenerationError({ sectionId: currentSection.id, message })
+    })
+  }
+
+  const handleStopGeneration = () => {
+    abortControllerRef.current?.abort()
   }
 
   const handleExport = () => {
@@ -77,6 +94,18 @@ export const EditorScreen: React.FC = () => {
         >
           {isCurrentGenerating ? 'Writing…' : 'Generate'}
         </GlassButton>
+
+        {isCurrentGenerating && (
+          <GlassButton
+            onClick={handleStopGeneration}
+            variant="ghost"
+            size="sm"
+            icon={<Square size={14} />}
+            className="shrink-0"
+          >
+            Stop
+          </GlassButton>
+        )}
 
         <GlassButton
           onClick={handleExport}
@@ -148,6 +177,10 @@ export const EditorScreen: React.FC = () => {
 
               {isCurrentGenerating && (
                 <div className="mt-1 font-mono text-xs text-tiger">writing…</div>
+              )}
+
+              {generationError && generationError.sectionId === currentSection.id && (
+                <p className="mt-1 font-mono text-xs text-rose">{generationError.message}</p>
               )}
 
               <GlassTextarea

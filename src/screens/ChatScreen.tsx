@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { Send, Paperclip, X } from 'lucide-react'
 import { GlassButton, Kbd } from '../components/ui'
-import { mockMessages, getRandomAssistantReply } from '../mock/messages'
-import type { Message } from '../mock/messages'
-import { generateSection, getPaper } from '../lib/paper'
-
-const WRITE_KEYWORDS = ['write', 'draft', 'abstract']
+import { useChat, sendMessage, clear } from '../lib/chat'
+import { useSettings } from '../lib/settings'
 
 const MAX_TEXTAREA_LINES = 6
 const LINE_HEIGHT_PX = 20 // approx line-height for the 14px composer text
@@ -36,9 +34,10 @@ const renderRich = (text: string): React.ReactNode[] =>
   )
 
 export const ChatScreen: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>(mockMessages)
+  const messages = useChat()
+  const settings = useSettings()
   const [inputValue, setInputValue] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSending, setIsSending] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -59,47 +58,18 @@ export const ChatScreen: React.FC = () => {
     el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT_PX) + 'px'
   }
 
-  const sendMessage = (content: string) => {
-    if (!content.trim()) return
+  const handleSendMessage = () => {
+    const content = inputValue
+    if (!content.trim() || isSending) return
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    }
-
-    setMessages(prev => [...prev, userMessage])
     setInputValue('')
-    setIsLoading(true)
+    setIsSending(true)
     if (textareaRef.current) {
       textareaRef.current.style.height = `${MIN_TEXTAREA_HEIGHT_PX}px`
     }
 
-    const lowerContent = content.toLowerCase()
-    const wantsWriting = WRITE_KEYWORDS.some(keyword => lowerContent.includes(keyword))
-
-    // Simulate assistant response delay
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: wantsWriting
-          ? 'On it — drafting the next section on the right.'
-          : getRandomAssistantReply(),
-        timestamp: new Date(),
-      }
-      setMessages(prev => [...prev, assistantMessage])
-      setIsLoading(false)
-
-      if (wantsWriting) {
-        const emptySection = getPaper().sections.find(section => section.status === 'empty')
-        if (emptySection) void generateSection(emptySection.id)
-      }
-    }, 800)
+    void sendMessage(content).finally(() => setIsSending(false))
   }
-
-  const handleSendMessage = () => sendMessage(inputValue)
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -122,11 +92,22 @@ export const ChatScreen: React.FC = () => {
   }
 
   const handleClear = () => {
-    setMessages([])
+    clear()
     setInputValue('')
   }
 
   const isEmpty = messages.length === 0
+  const writerConfigured = settings.writerTag !== null
+
+  // A freshly-pushed streaming assistant message with no content yet is shown as
+  // the typing indicator instead of an empty bubble; once tokens start arriving
+  // it re-appears in the list below with its own growing text + caret.
+  const emptyStreamingMessage = messages.find((m) => m.streaming && m.content.length === 0)
+  const visibleMessages = emptyStreamingMessage
+    ? messages.filter((m) => m.id !== emptyStreamingMessage.id)
+    : messages
+  const lastMessage = messages[messages.length - 1]
+  const showTyping = isSending && !(lastMessage?.role === 'assistant' && lastMessage.content.length > 0)
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -176,7 +157,7 @@ export const ChatScreen: React.FC = () => {
           ) : (
             <div className="space-y-5">
               <AnimatePresence mode="popLayout">
-                {messages.map((message, i) => (
+                {visibleMessages.map((message, i) => (
                   <motion.div
                     key={message.id}
                     className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -204,6 +185,7 @@ export const ChatScreen: React.FC = () => {
                         <div className="flex flex-col items-start pt-0.5">
                           <p className="text-sm text-fg leading-relaxed whitespace-pre-wrap">
                             {renderRich(message.content)}
+                            {message.streaming && <span className="text-tiger caret-blink">▍</span>}
                           </p>
                           <span className="mt-1 font-mono text-[11px] text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity">
                             {formatTimestamp(message.timestamp)}
@@ -214,7 +196,7 @@ export const ChatScreen: React.FC = () => {
                   </motion.div>
                 ))}
 
-                {isLoading && (
+                {showTyping && (
                   <motion.div
                     key="typing-indicator"
                     className="flex justify-start"
@@ -249,6 +231,16 @@ export const ChatScreen: React.FC = () => {
       {/* Composer */}
       <div className="sticky bottom-0 px-6 pb-6 pt-2">
         <div className="max-w-[760px] mx-auto">
+          {!writerConfigured && (
+            <p className="mb-2 px-1 font-mono text-[11px] text-fg-faint">
+              No writer yet — replies are canned. Add one in{' '}
+              <Link to="/setup?step=writer" className="text-tiger hover:underline">
+                Settings
+              </Link>
+              .
+            </p>
+          )}
+
           <div className="glass rounded-[var(--r-lg)] p-2.5 flex items-end gap-2">
             <button
               className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-full text-fg-muted hover:bg-[var(--panel-2)] hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger"
@@ -270,7 +262,7 @@ export const ChatScreen: React.FC = () => {
 
             <GlassButton
               onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isLoading}
+              disabled={!inputValue.trim() || isSending}
               variant="primary"
               className="shrink-0 h-9 w-9 !p-0 rounded-full"
               aria-label="Send message"

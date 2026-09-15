@@ -5,7 +5,7 @@ import { Sun, Moon, Monitor, type LucideIcon } from 'lucide-react'
 import { GlassCard, GlassButton, GlassInput, Chip } from '../components/ui'
 import { useTheme, type ThemeMode } from '../lib/theme'
 import { useSettings } from '../lib/settings'
-import { OCR_MODELS } from '../lib/models'
+import { OCR_MODELS, writerById } from '../lib/models'
 
 const themeOptions: { mode: ThemeMode; label: string; icon: LucideIcon }[] = [
   { mode: 'light', label: 'Paper', icon: Sun },
@@ -28,6 +28,7 @@ export const SettingsScreen: React.FC = () => {
   const [dbPath, setDbPath] = useState('/Users/michelneufeglise/.papertiger/data.db')
 
   const ocrModel = settings.ocrQuant ? OCR_MODELS[settings.ocrQuant] : null
+  const writerModel = settings.writerId ? writerById(settings.writerId) : null
 
   const mockDBSize = '24.5 MB'
   const mockDBEntries = '1,247 memories'
@@ -120,10 +121,25 @@ export const SettingsScreen: React.FC = () => {
 
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-fg">Writer · lightweight local model</p>
-                <p className="text-xs text-fg-muted mt-1">Assists with writing suggestions and generation.</p>
+                <p className="text-sm font-semibold text-fg">
+                  {writerModel ? writerModel.label : 'Writer · not set'}
+                </p>
+                {writerModel ? (
+                  <p className="font-mono text-xs text-fg-muted mt-1">{writerModel.tag}</p>
+                ) : (
+                  <p className="text-xs text-fg-muted mt-1">
+                    {settings.writerSkipped ? 'Skipped. Assists with writing suggestions and generation.' : 'Assists with writing suggestions and generation.'}
+                  </p>
+                )}
               </div>
-              <Chip tone="mint" mono>ON-DEVICE</Chip>
+              <div className="flex items-center gap-2 shrink-0">
+                {writerModel && (
+                  <Chip tone="mint" mono>ON-DEVICE</Chip>
+                )}
+                <GlassButton variant="ghost" size="sm" onClick={() => navigate('/setup?step=writer')}>
+                  {writerModel ? 'Change' : 'Choose'}
+                </GlassButton>
+              </div>
             </div>
           </GlassCard>
         </motion.div>

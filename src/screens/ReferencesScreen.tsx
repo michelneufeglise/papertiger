@@ -6,13 +6,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { GlassCard, GlassButton, StatusChip, Stripe, Modal, Chip } from '../components/ui'
-import {
-  kindFromName,
-  processSource,
-  type Source,
-  type SourceInput,
-  type SourceKind,
-} from '../lib/sources'
+import { kindFromName, type Source, type SourceInput, type SourceKind } from '../lib/sources'
+import { useSources, addSource, enqueue, cancel, removeSource } from '../lib/sourcesStore'
 import { useSettings } from '../lib/settings'
 import { isTauri } from '../lib/tauri'
 
@@ -80,7 +75,7 @@ export const ReferencesScreen: React.FC = () => {
   const navigate = useNavigate()
   const settings = useSettings()
 
-  const [sources, setSources] = useState<Source[]>([])
+  const sources = useSources()
   const [isDragOver, setIsDragOver] = useState(false)
   const [skipNotices, setSkipNotices] = useState<SkipNotice[]>([])
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null)
@@ -88,67 +83,6 @@ export const ReferencesScreen: React.FC = () => {
   const [copied, setCopied] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  // Mirrors `sources` so the (non-React) queue runner always sees fresh state without
-  // needing to be re-created on every state change. Synced from a plain effect below —
-  // never mutated inside a state updater, which React may invoke more than once
-  // (e.g. under StrictMode) and would desync the mirror from what actually committed.
-  const sourcesRef = useRef<Source[]>([])
-  useEffect(() => {
-    sourcesRef.current = sources
-  }, [sources])
-
-  // Original file/path input for each source, keyed by id — needed to (re)invoke processSource.
-  const inputsRef = useRef<Record<string, SourceInput>>({})
-  // FIFO order sources were added in, independent of the newest-first display order.
-  const processingOrderRef = useRef<string[]>([])
-  const abortControllersRef = useRef<Record<string, AbortController>>({})
-  const processingIdRef = useRef<string | null>(null)
-
-  const updateSource = useCallback((id: string, patch: Partial<Source>) => {
-    setSources((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
-  }, [])
-
-  const startProcessing = useCallback(
-    async (id: string, ocrTag: string) => {
-      const input = inputsRef.current[id]
-      if (!input) return
-
-      processingIdRef.current = id
-      const controller = new AbortController()
-      abortControllersRef.current[id] = controller
-
-      await processSource(input, ocrTag, (patch) => updateSource(id, patch), controller.signal)
-
-      delete abortControllersRef.current[id]
-      processingIdRef.current = null
-      // Nudge `sources` so the queue-advance effect below re-runs even when this source
-      // was aborted (processSource returns early on abort without calling onUpdate, so
-      // the array wouldn't otherwise change).
-      setSources((prev) => [...prev])
-    },
-    [updateSource],
-  )
-
-  const runQueue = useCallback(() => {
-    if (processingIdRef.current) return
-    const ocrTag = settings.ocrTag
-
-    for (const id of processingOrderRef.current) {
-      const source = sourcesRef.current.find((s) => s.id === id)
-      if (!source || source.status !== 'queued') continue
-      if ((source.kind === 'pdf' || source.kind === 'image') && !ocrTag) continue
-
-      void startProcessing(id, ocrTag ?? '')
-      return
-    }
-  }, [settings.ocrTag, startProcessing])
-
-  // Re-check the queue whenever a source is added/updated/removed, or the OCR model
-  // (settings.ocrTag, part of runQueue's identity) changes.
-  useEffect(() => {
-    runQueue()
-  }, [sources, runQueue])
 
   const addSkipNotice = useCallback((name: string) => {
     const id = crypto.randomUUID()
@@ -180,9 +114,6 @@ export const ReferencesScreen: React.FC = () => {
         }
 
         const id = crypto.randomUUID()
-        inputsRef.current[id] = input
-        processingOrderRef.current.push(id)
-
         const source: Source = {
           id,
           name,
@@ -194,20 +125,16 @@ export const ReferencesScreen: React.FC = () => {
           pages: 0,
           text: '',
         }
-        setSources((prev) => [source, ...prev])
+        addSource(source)
+        enqueue(id, input)
       }
-      // No explicit queue kick needed here — the `sources` effect above re-runs
-      // runQueue() once these additions commit.
     },
     [addSkipNotice],
   )
 
   const handleRemove = useCallback((id: string) => {
-    abortControllersRef.current[id]?.abort()
-    delete abortControllersRef.current[id]
-    delete inputsRef.current[id]
-    processingOrderRef.current = processingOrderRef.current.filter((pid) => pid !== id)
-    setSources((prev) => prev.filter((s) => s.id !== id))
+    cancel(id)
+    removeSource(id)
   }, [])
 
   const handlePreview = useCallback((id: string) => {

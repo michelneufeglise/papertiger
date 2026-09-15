@@ -5,6 +5,9 @@ export interface AppSettings {
   setupDone: boolean
   ocrQuant: Quant | null
   ocrTag: string | null
+  writerId: string | null
+  writerTag: string | null
+  writerSkipped: boolean
 }
 
 const STORAGE_KEY = 'papertiger.settings'
@@ -13,6 +16,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   setupDone: false,
   ocrQuant: null,
   ocrTag: null,
+  writerId: null,
+  writerTag: null,
+  writerSkipped: false,
 }
 
 type Listener = () => void
@@ -54,6 +60,15 @@ function subscribe(listener: Listener): () => void {
   return () => listeners.delete(listener)
 }
 
+/** Subscribe to settings changes from outside React (e.g. store modules). Returns an unsubscribe function. */
+export function subscribeSettings(listener: Listener): () => void {
+  return subscribe(listener)
+}
+
 export function useSettings(): AppSettings {
   return useSyncExternalStore(subscribe, readSettings, () => DEFAULT_SETTINGS)
+}
+
+export function isWriterConfigured(): boolean {
+  return readSettings().writerTag !== null
 }

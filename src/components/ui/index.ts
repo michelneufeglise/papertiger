@@ -19,6 +19,9 @@ export type { TitleBarProps } from './TitleBar'
 export { Modal } from './Modal'
 export type { ModalProps } from './Modal'
 
+export { SketchFrame } from './SketchFrame'
+export type { SketchFrameProps } from './SketchFrame'
+
 export { Stripe } from './Stripe'
 export type { StripeProps } from './Stripe'
 

@@ -1,6 +1,7 @@
 import React from 'react'
 import clsx from 'clsx'
 import { Tiger } from './Tiger'
+import { SketchFrame } from './SketchFrame'
 import wordmarkUrl from '../../assets/wordmark-paper-tiger.png'
 
 // The window has decorations:false, so there are no macOS traffic lights.
@@ -23,11 +24,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 }) => {
   const mask = `url(${wordmarkUrl})`
   return (
-    <header
+    <SketchFrame
+      as="header"
+      seed={1}
+      radius={18}
       data-tauri-drag-region
       style={{ paddingLeft: LEFT_INSET_PX }}
       className={clsx(
-        'h-[72px] flex items-center justify-between shrink-0 bg-panel border-b-2 border-[var(--line)]',
+        'h-[72px] flex items-center justify-between shrink-0',
         'pr-4 select-none',
         className
       )}
@@ -81,6 +85,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           100% on-device
         </span>
       </div>
-    </header>
+    </SketchFrame>
   )
 }

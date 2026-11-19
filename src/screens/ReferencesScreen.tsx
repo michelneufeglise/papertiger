@@ -237,7 +237,7 @@ export const ReferencesScreen: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-6 border-b-2 border-[var(--line)]">
+      <div className="p-6 border-b-2 border-dashed border-[var(--line-soft)]">
         <h1 className="font-display text-[32px] text-fg mb-1.5">
           <span className="doodle-underline">Sources</span>
         </h1>

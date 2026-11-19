@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import clsx from 'clsx'
+import { SketchFrame } from './SketchFrame'
 
 export interface SidebarItemProps {
   icon: LucideIcon
@@ -63,14 +64,15 @@ export interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ children, className }) => {
   return (
-    <aside
-      className={clsx(
-        'w-[84px] shrink-0 h-full flex flex-col items-center gap-1 pt-2 pb-3 px-1.5',
-        'bg-panel border-r-2 border-[var(--line)] overflow-y-auto',
-        className
-      )}
+    <SketchFrame
+      as="aside"
+      seed={2}
+      radius={18}
+      overflow="hidden"
+      className={clsx('w-[84px] shrink-0 h-full', className)}
+      innerClassName="items-center gap-1 pt-2 pb-3 px-1.5 overflow-y-auto"
     >
       {children}
-    </aside>
+    </SketchFrame>
   )
 }

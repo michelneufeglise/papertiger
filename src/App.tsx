@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
 import { MessageSquare, FolderOpen, PenLine, AudioWaveform, SlidersHorizontal } from 'lucide-react'
 
-import { TitleBar, Sidebar, SidebarItem } from './components/ui'
+import { TitleBar, Sidebar, SidebarItem, SketchFrame } from './components/ui'
 import { PaperPanel } from './components/PaperPanel'
 import { ChatScreen } from './screens/ChatScreen'
 import { ReferencesScreen } from './screens/ReferencesScreen'
@@ -38,54 +38,76 @@ const AppContent: React.FC = () => {
   const isSetup = location.pathname === '/setup'
 
   return (
-    <div className="paper-ground relative flex flex-col h-screen w-screen overflow-hidden">
-      <div className="relative z-10 flex flex-col h-full w-full">
-        <TitleBar title={isSetup ? 'Setup' : currentRoute?.name || 'papertiger'} />
+    <div
+      data-tauri-drag-region
+      className="desk-ground relative flex flex-col h-screen w-screen overflow-hidden rounded-[22px] p-3 gap-3"
+    >
+      <TitleBar title={isSetup ? 'Setup' : currentRoute?.name || 'papertiger'} />
 
-        {isSetup ? (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <Routes>
-              <Route path="/setup" element={<SetupWizard />} />
-            </Routes>
-          </div>
-        ) : (
-          <div className="flex flex-1 min-h-0">
-            <Sidebar>
-              {routes.map(route => (
-                <SidebarItem
-                  key={route.path}
-                  icon={route.icon}
-                  label={route.name}
-                  active={location.pathname === route.path}
-                  onClick={() => navigate(route.path)}
-                />
-              ))}
-            </Sidebar>
+      {isSetup ? (
+        <SketchFrame
+          seed={3}
+          radius={18}
+          overflow="hidden"
+          innerClassName="paper-ground"
+          className="flex-1 min-h-0"
+        >
+          <Routes>
+            <Route path="/setup" element={<SetupWizard />} />
+          </Routes>
+        </SketchFrame>
+      ) : (
+        <div data-tauri-drag-region className="flex flex-1 min-h-0 gap-3">
+          <Sidebar>
+            {routes.map(route => (
+              <SidebarItem
+                key={route.path}
+                icon={route.icon}
+                label={route.name}
+                active={location.pathname === route.path}
+                onClick={() => navigate(route.path)}
+              />
+            ))}
+          </Sidebar>
 
-            <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={location.pathname}
-                  className="flex-1 min-h-0 flex flex-col overflow-hidden"
-                  initial={{ opacity: 0, y: 10, scale: 0.985 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.99 }}
-                  transition={{ type: 'spring', stiffness: 520, damping: 26, mass: 0.7 }}
-                >
-                  <Routes>
-                    {routes.map(route => {
-                      const ScreenComponent = route.screen
-                      return <Route key={route.path} path={route.path} element={<ScreenComponent />} />
-                    })}
-                  </Routes>
-                </motion.div>
-              </AnimatePresence>
-            </div>
+          <SketchFrame
+            seed={3}
+            radius={18}
+            overflow="hidden"
+            innerClassName="paper-ground"
+            className="flex-1 min-w-0"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                className="flex-1 min-h-0 flex flex-col overflow-hidden"
+                initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                transition={{ type: 'spring', stiffness: 520, damping: 26, mass: 0.7 }}
+              >
+                <Routes>
+                  {routes.map(route => {
+                    const ScreenComponent = route.screen
+                    return <Route key={route.path} path={route.path} element={<ScreenComponent />} />
+                  })}
+                </Routes>
+              </motion.div>
+            </AnimatePresence>
+          </SketchFrame>
 
-            {PAPER_PANEL_PATHS.has(location.pathname) && <PaperPanel />}
-          </div>
-        )}
-      </div>
+          {PAPER_PANEL_PATHS.has(location.pathname) && <PaperPanel />}
+        </div>
+      )}
+
+      {/* Window outline */}
+      <SketchFrame
+        seed={5}
+        radius={22}
+        fill={false}
+        shadow={false}
+        className="absolute inset-0 pointer-events-none"
+      />
     </div>
   )
 }

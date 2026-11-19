@@ -72,7 +72,7 @@ export const EditorScreen: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center gap-4 px-6 h-16 border-b-2 border-[var(--line)]">
+      <div className="shrink-0 flex items-center gap-4 px-6 h-16 border-b-2 border-dashed border-[var(--line-soft)]">
         <input
           value={paper.title}
           onChange={e => setTitle(e.target.value)}

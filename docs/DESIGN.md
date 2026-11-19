@@ -73,6 +73,25 @@ Code: `src/lib/tiger.ts` (state, cycle, mood) and `src/components/ui/Tiger.tsx`.
 
 **Night sticker.** In dark mode the tiger sits on a cream (`#fbf6ea`) disc with a `--line` border and 6% inset, so the graphite line work stays readable. Detected by watching the `dark` class on `<html>`.
 
+## Frames and the desk
+
+The window is a rounded **desk**, and every column floats on it as its own card with a pencil-drawn outline.
+- **Desk:**
+  - The root in `App.tsx` is `rounded-[22px] overflow-hidden` in `--desk` (light `#e9dcc0`, Night `#1c1a17`) with faint grain (`.desk-ground`).
+  - It has 12px padding and 12px gaps, and carries `data-tauri-drag-region`, so any gap drags the window.
+  - A `SketchFrame` outline with no fill and no shadow runs around the whole window.
+  - In Tauri, `main.tsx` adds `html.tauri`, which makes html, body and #root transparent so the rounded corners show the desktop. In the browser, the area outside the rounded desk is `--desk`.
+- **Cards:** header (seed 1), rail (seed 2), main column (seed 3, with the ruled `.paper-ground` inside it), paper panel (seed 4), and the window outline (seed 5). The setup wizard sits in one large card below the header.
+- **`SketchFrame`** (`src/components/ui/SketchFrame.tsx`):
+  - Props: `seed`, `radius=18`, `shadow`, `fill`, `strokeOpacity`, `overflow="visible"|"hidden"`, `innerClassName`, `as`, and `data-*` passthrough.
+  - It draws an SVG behind its children with four layers: an offset shadow (3, 4) in `--line` at 18%, a `--panel` fill, a 2.2px main stroke in `--line`, and a 1px second pencil pass at 45% from another seed.
+  - With `overflow="hidden"`, an inner layer does the clipping, so the strokes and the shadow themselves are never clipped.
+  - Paths come from `src/lib/sketchPath.ts` (`sketchRoundedRect`, `sketchSecondPass`). It is a seeded, pure generator: smooth noise of ±1.2px every ~36px, corner radii varying ±15%, and a small overshoot so the line doesn't close perfectly.
+  - A `ResizeObserver` regenerates the paths only when the integer size changes.
+  - It uses no SVG filters and no animation.
+- **Inner dividers:** full-width column dividers are dashed `--line-soft`, never a solid ink rule.
+- **Small elements:** cards and buttons still use the CSS `.sketch` / `.wobble` borders.
+
 ## Header
 
 `src/components/ui/TitleBar.tsx` is 72px tall: a paper background with a 2px ink bottom stroke, and the whole bar is a Tauri drag region.

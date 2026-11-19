@@ -9,6 +9,7 @@ import { applyTheme, readStoredMode } from './lib/theme'
 import { hydrateVoice } from './lib/voice'
 import { hydrateSources } from './lib/sourcesStore'
 
+if ('__TAURI_INTERNALS__' in window) document.documentElement.classList.add('tauri')
 applyTheme(readStoredMode())
 void hydrateVoice()
 void hydrateSources()

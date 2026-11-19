@@ -5,6 +5,7 @@ import { usePaper, wordCount } from '../lib/paper'
 import { useSettings } from '../lib/settings'
 import { writerById } from '../lib/models'
 import { Tiger } from './ui/Tiger'
+import { SketchFrame } from './ui/SketchFrame'
 
 const COLLAPSE_KEY = 'papertiger.paperPanel'
 const WIDTH_KEY = 'papertiger.paperPanelWidth'
@@ -124,7 +125,7 @@ export const PaperPanel: React.FC = () => {
 
   if (collapsed) {
     return (
-      <div className="shrink-0 w-11 h-full bg-panel border-l-2 border-[var(--line)] flex flex-col items-center py-4 gap-4">
+      <SketchFrame seed={4} radius={18} className="shrink-0 w-11 h-full flex flex-col items-center py-4 gap-4">
         <button
           onClick={toggleCollapsed}
           className="h-7 w-7 inline-flex items-center justify-center rounded-[var(--r-sm)] text-fg-muted hover:bg-rose/50 hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose"
@@ -138,13 +139,13 @@ export const PaperPanel: React.FC = () => {
         >
           Paper
         </div>
-      </div>
+      </SketchFrame>
     )
   }
 
   return (
     <div
-      className="relative shrink-0 h-full flex flex-col overflow-visible"
+      className="relative shrink-0 h-full flex flex-col"
       style={{ width }}
     >
       {/* Resize handle on the left edge */}
@@ -158,14 +159,16 @@ export const PaperPanel: React.FC = () => {
         tabIndex={0}
         onPointerDown={onHandleDown}
         onKeyDown={onHandleKey}
-        className="group absolute left-0 top-0 bottom-0 w-4 -translate-x-1/2 z-20 cursor-col-resize flex items-center justify-center focus-visible:outline-none"
+        className="group absolute -left-3 top-0 bottom-0 w-3 z-20 cursor-col-resize flex items-center justify-center focus-visible:outline-none"
       >
         <span className="h-16 w-1.5 rounded-full bg-[color-mix(in_srgb,var(--line)_40%,transparent)] group-hover:bg-rose group-active:bg-rose group-focus-visible:bg-rose transition-colors" />
       </div>
 
-      <div
-        className="sketch-alt relative m-3 ml-4 flex-1 min-h-0 flex flex-col overflow-hidden"
-        style={{ rotate: '0.4deg', boxShadow: '5px 6px 0 var(--line)' }}
+      <SketchFrame
+        seed={4}
+        radius={18}
+        className="flex-1 min-h-0 flex flex-col"
+        style={{ rotate: '0.4deg' }}
       >
         {/* Tape strip */}
         <div
@@ -269,10 +272,10 @@ export const PaperPanel: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 px-4 h-9 flex items-center border-t-2 border-dashed border-[var(--line-soft)] font-mono text-[11px] text-fg-faint">
+      <div className="shrink-0 px-4 h-9 flex items-center rounded-b-[18px] border-t-2 border-dashed border-[var(--line-soft)] font-mono text-[11px] text-fg-faint">
         {doneCount} of {paper.sections.length} sections written
       </div>
-      </div>
+      </SketchFrame>
     </div>
   )
 }

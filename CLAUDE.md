@@ -218,6 +218,22 @@ describing what was planned and what was implemented.
 - **Rule:** any new window command used from the frontend (minimize, close, set size…) needs its own `core:window:allow-*` permission in the capability file.
 - **Verified:** `npm run build` and `cargo check` are clean; the relaunched dev binary contains the permission. The drag itself still needs a hand test, because computer use can't reach the unbundled dev binary.
 
+### 2026-11-19 — Floating pencil frames and a rounded window (Opus plan, Sonnet build)
+- **Goal:** the user found the straight, full-bleed column borders too strict. They wanted rounded app corners, space between the columns, and lines that look drawn with a pencil.
+- **Desk:** the app root is now a rounded desk (`rounded-[22px]`, `--desk` token) with 12px padding and gaps. The header, rail, main column and paper panel float on it as separate cards. The gaps are drag regions.
+- **Tauri:** `main.tsx` adds `html.tauri`, which makes html, body and #root transparent so the window corners are really rounded (the window already has `transparent: true`).
+- **Pencil lines:**
+  - `src/lib/sketchPath.ts` is a seeded wobbly rounded-rect path generator.
+  - `src/components/ui/SketchFrame.tsx` draws the shadow, the fill and a double pencil stroke as SVG behind its children, with a ResizeObserver and no filters.
+  - It is used for the header, rail, main card, paper panel (with the tape and tilt kept), the wizard card and the window outline.
+- **Screens:** solid full-width heading rules in Sources and Draft are now dashed `--line-soft`.
+- **Verified:**
+  - `npm run build` and `npm run lint` are clean.
+  - In the browser: 12px gutters, header 12px from the top, rail 84px wide, the double strokes, Night mode and the wizard card.
+  - Screenshots are `docs/ux-v3-frames.png` and `docs/ux-v3-frames-night.png`.
+- **Not verified:** rounded transparent corners, gap dragging and edge resizing inside the Tauri window. These need the user's eyes, since computer use can't reach the dev binary.
+- **Follow-up option:** use `SketchFrame` for the larger inner cards too (chat bubbles, Settings sections, source rows).
+
 <!-- Add new entries above this line, newest last. -->
 
 

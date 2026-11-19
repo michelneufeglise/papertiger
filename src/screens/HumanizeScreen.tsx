@@ -13,6 +13,7 @@ import {
   selectAll,
   setManualReview,
   effectiveOutputs,
+  unresolvedFlags,
   setTone,
   setStrength,
   type Tone,
@@ -89,10 +90,12 @@ const StatusBadge: React.FC<{ job?: DocJob }> = ({ job }) => {
       </span>
     )
   if (job.status === 'done')
-    return job.flagged.length > 0 ? (
-      <span className={clsx(STATUS_BASE, 'border-[var(--line)] bg-rose/50 text-fg')}>{job.flagged.length} kept</span>
+    return unresolvedFlags(job).length > 0 ? (
+      <span className={clsx(STATUS_BASE, 'border-[var(--line)] bg-rose/50 text-fg')}>{unresolvedFlags(job).length} kept</span>
     ) : (
-      <span className={clsx(STATUS_BASE, 'border-mint text-mint bg-mint/20')}>Done</span>
+      <span className={clsx(STATUS_BASE, 'border-mint text-mint bg-mint/20')}>
+        {Object.keys(job.decisions).length > 0 ? 'Reviewed' : 'Done'}
+      </span>
     )
   if (job.status === 'cancelled') return <span className={clsx(STATUS_BASE, 'border-[var(--line-soft)] bg-panel-2 text-fg-muted')}>Cancelled</span>
   return <span className={clsx(STATUS_BASE, 'border-danger text-danger')}>Error</span>
@@ -676,14 +679,14 @@ export const HumanizeScreen: React.FC = () => {
           )}
 
           {/* Flagged note */}
-          {job && job.flagged.length > 0 && !jobRunning && (
+          {job && unresolvedFlags(job).length > 0 && !jobRunning && (
             <details className="text-sm text-fg-muted">
               <summary className="cursor-pointer">
-                {job?.flagged.length} {job?.flagged.length === 1 ? 'block' : 'blocks'} kept as in the original (the
+                {unresolvedFlags(job).length} {unresolvedFlags(job).length === 1 ? 'block' : 'blocks'} kept as in the original (the
                 rewrite didn&apos;t pass the quality check)
               </summary>
               <ul className="mt-2 space-y-2 font-mono text-[11px]">
-                {job?.flagged.map(f => (
+                {unresolvedFlags(job).map(f => (
                   <li key={f.idx} title={f.issues.join('; ')}>
                     <span className="text-fg">#{f.i}</span> {f.issues.join('; ')}
                     {f.preview ? <span className="block text-fg-faint truncate">{f.preview}</span> : null}

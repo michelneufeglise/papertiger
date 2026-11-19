@@ -7,6 +7,7 @@ import { GlassButton } from '../ui'
 import {
   useHumanize,
   effectiveOutputs,
+  unresolvedFlags,
   setDecision,
   keepAll,
   revertAll,
@@ -250,7 +251,7 @@ export const ReviewPortal: React.FC<ReviewPortalProps> = ({ sourceId, onClose })
       changed,
       reverted: ds.filter(d => d.kind === 'revert').length,
       edited: ds.filter(d => d.kind === 'edit').length,
-      guard: job.flagged.filter(f => job.decisions[f.idx]?.kind !== 'edit').length,
+      guard: unresolvedFlags(job).length,
     }
   }, [job, eff])
 

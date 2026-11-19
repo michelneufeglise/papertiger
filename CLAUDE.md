@@ -322,3 +322,16 @@ describing what was planned and what was implemented.
   - Screenshots: `docs/ux-v3-humanize-collection.png`, `docs/ux-v3-humanize-review.png`.
 - **Known rough edges:** after review, the card badge ("2 kept") and the "n blocks kept as in the original" note still count the guard's flags, not the decisions; a guard note ("missing: 6-12") stays on a block after you edit it. The portal has no exit animation. An OCR `<table>` without cells still shows as raw markup in the result view.
 - **Not verified:** the Tauri window (save dialog, look of the portal at full width).
+
+### 2026-11-20 — Kept counts follow review decisions (Opus plan, Sonnet build)
+- `unresolvedFlags(job)` in `humanizeStore.ts` gives the flagged blocks with no review decision.
+- It drives three things:
+  - the card badge: "n kept" while any remain, then "Reviewed" once you have decided, else "Done";
+  - the "n blocks kept as in the original" note under the result;
+  - the portal's "kept by the guard" count. A reverted flagged block was counted twice before.
+- Verified in the browser with real qwen3 4B on `sample-page-2` (2 flagged):
+  - 2 kept;
+  - Revert one: 1 kept;
+  - Edit the other: 0, with Reviewed and no note;
+  - Keep the first again: back to 1 kept.
+- Build, lint and the 43 tests are clean.

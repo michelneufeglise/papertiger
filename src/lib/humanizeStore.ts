@@ -113,6 +113,11 @@ export function useHumanize(): HumanizeState {
 // only other job fields (draft, progress) change.
 const effectiveCache = new WeakMap<object, WeakMap<object, Record<number, string>>>()
 
+/** Flagged blocks the user has not yet reviewed (no decision). */
+export function unresolvedFlags(job: DocJob): FlaggedBlock[] {
+  return job.flagged.filter(f => !job.decisions[f.idx])
+}
+
 /**
  * The rewrites with the review decisions applied: keep = rewrite, revert = no entry (render
  * falls back to the original), edit = the user's text (also valid for flagged blocks, as

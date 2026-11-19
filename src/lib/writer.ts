@@ -4,6 +4,7 @@ import { WRITER_NUM_CTX, writerById } from './models'
 import { readSettings } from './settings'
 import { getSources } from './sourcesStore'
 import { getPaper, updateSection } from './paper'
+import { flashTiger, suppressFinishFlash } from './tiger'
 import { describeVoice, getVoice } from './voice'
 
 export interface WriteContext {
@@ -130,9 +131,12 @@ export async function writeSection(sectionId: string, signal?: AbortSignal): Pro
     )
     // Covers both normal completion and an aborted stream (chatStream resolves rather
     // than throwing on AbortError), matching the "keep partial text, end 'done'" contract.
+    if (signal?.aborted) suppressFinishFlash()
     updateSection(sectionId, { status: 'done' })
   } catch (e) {
+    if (signal?.aborted) suppressFinishFlash()
     updateSection(sectionId, { status: 'done' })
+    if (!signal?.aborted) flashTiger('erasing-mistake', 4000)
     throw e
   }
 }

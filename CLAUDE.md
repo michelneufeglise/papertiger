@@ -234,6 +234,35 @@ describing what was planned and what was implemented.
 - **Not verified:** rounded transparent corners, gap dragging and edge resizing inside the Tauri window. These need the user's eyes, since computer use can't reach the dev binary.
 - **Follow-up option:** use `SketchFrame` for the larger inner cards too (chat bubbles, Settings sections, source rows).
 
+### 2026-11-19 — Reading & writing tigers as live status (Opus plan, Sonnet build)
+- **Sprites:** the "Tiger Reading & Writing" sheet is now `design/tiger-reading-writing-sheet.jpg`.
+  - `cut_tiger_sheet.py` takes `--sheet emotions|reading-writing`. The emotions sprites are unchanged byte for byte.
+  - There are 12 new 320px WebP poses with their props kept (about 300 KB in total). Preview: `docs/ux-v3-status-poses.png`.
+  - `TIGER_STATES` is now 48, and all 48 join the 5 s cycle.
+- **Status engine** (`src/lib/tiger.ts`):
+  - `useTigerStatusEngine()` is mounted once in `App.tsx`. It replaces the per-instance `useTigerMood`, which is kept as an alias.
+  - One module store is read by every `<Tiger cycle>`.
+  - Writing: picking-up-pencil, then thinking-before-writing after 2 s with no text, then writing-intently or scribbling-fast (40 chars/s over a 2 s window). A 4 s finished-page flash follows.
+  - Reading: opening-book, focused-reading, sleepy-reading after 45 s on one page, a 1.5 s turning-page flash, and a 4 s amazed-reading flash when a source is done.
+  - Errors: erasing-mistake for a writer failure, sad for a source failure.
+  - `flashTiger` and `suppressFinishFlash` are exported. The only change to `writer.ts` is calling them in the catch and on Stop.
+  - A 500 ms poll runs only while something is active.
+  - `tigerForSource` drives the Sources rows. The drop zone shows `taking-notes` when sources exist and none is running.
+  - The paper panel and Draft tigers now follow the engine.
+- **Bug fixed during verification:** the seeded mock chat ends with a user message, which pinned `thinking` forever. Messages present at the engine's first run are now ignored, like restored sources.
+- **Verified in the browser against local Ollama:**
+  - `npm run build` and `npm run lint` are clean.
+  - Real OCR of `docs/sample-page.pdf`: opening-book, then focused-reading, then amazed-reading for 4 s, then the cycle.
+  - Real qwen3 4B generation: picking-up-pencil, then scribbling-fast, then finished-page for 4 s, then the cycle.
+  - Stop: back to the cycle with no finished-page.
+  - Missing model (a Gemma writer id set temporarily in the preview's localStorage, then restored): a 404 shows erasing-mistake for 4 s.
+  - Screenshots are `docs/ux-v3-status-writing.png` and `docs/ux-v3-status-header.png`.
+- **Not seen live:** thinking-before-writing (the model was warm), turning-page (the sample PDF has one page), and sleepy-reading (45 s). These follow from timers and code review only.
+- **Test note:**
+  - In the hidden browser pane, `requestAnimationFrame` stops completely, so pdf.js rendering stalls and framer-motion exits pile up in the DOM.
+  - Show the pane before testing OCR.
+  - Read the tiger's state from its React props, not from the `<img>` list.
+
 <!-- Add new entries above this line, newest last. -->
 
 

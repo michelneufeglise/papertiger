@@ -12,6 +12,7 @@ import { StyleScreen } from './screens/StyleScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { SetupWizard } from './screens/SetupWizard'
 import { needsSetup } from './lib/setup'
+import { useTigerStatusEngine } from './lib/tiger'
 
 const routes = [
   { path: '/', name: 'Chat', icon: MessageSquare, screen: ChatScreen },
@@ -22,6 +23,12 @@ const routes = [
 ]
 
 const PAPER_PANEL_PATHS = new Set(['/', '/references', '/style'])
+
+/** Mounts the tiger status engine once, inside the router, on every screen. */
+const TigerEngine: React.FC = () => {
+  useTigerStatusEngine()
+  return null
+}
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate()
@@ -116,6 +123,7 @@ function App() {
   return (
     <MotionConfig reducedMotion="user">
       <Router>
+        <TigerEngine />
         <AppContent />
       </Router>
     </MotionConfig>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import clsx from 'clsx'
-import { tigerSrc, useTigerCycle, useTigerMood, type TigerState } from '../../lib/tiger'
+import { tigerSrc, useTigerCycle, useTigerStatus, type TigerState } from '../../lib/tiger'
 
 export interface TigerProps {
   /** Fixed expression. Ignored while `cycle` is on. */
@@ -26,8 +26,8 @@ function useIsDark(): boolean {
 
 const CycleSprite: React.FC = () => {
   const cycled = useTigerCycle()
-  const mood = useTigerMood()
-  return <Sprite state={mood ?? cycled} />
+  const status = useTigerStatus()
+  return <Sprite state={status ?? cycled} />
 }
 
 const Sprite: React.FC<{ state: TigerState; alt?: string }> = ({ state, alt = '' }) => (

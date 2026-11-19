@@ -178,7 +178,7 @@ export const PaperPanel: React.FC = () => {
         />
       {/* Header */}
       <div className="shrink-0 flex items-center gap-2 px-4 h-16 pt-2 border-b-2 border-dashed border-[var(--line-soft)]">
-        {writingSection ? <Tiger state="writing" size={40} /> : <Tiger cycle size={40} />}
+        <Tiger cycle size={40} />
         <span className="font-display text-[20px] text-fg">Paper</span>
         <span className="font-mono text-[11px] text-fg-muted whitespace-nowrap">
           {words.toLocaleString()} words

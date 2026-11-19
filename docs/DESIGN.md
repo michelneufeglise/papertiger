@@ -53,23 +53,63 @@ Lucide icons are drawn at pencil weight (stroke 2.25, round caps and joins).
 
 Code: `src/lib/tiger.ts` (state, cycle, mood) and `src/components/ui/Tiger.tsx`.
 
-**Sprites.** 36 transparent WebP files in `src/assets/tiger/<state>.webp`, cut from `design/tiger-emotions-sheet.jpg` (6x6 sheet). Names, in sheet reading order: idle, listening, thinking, talking, happy, sad, surprised, laughing, shy, sleeping, bored, angry, scared, excited, disgusted, confused, cheerful, frustrated, sick, shocked, anxious, proud, doubtful, lazy, sad-hello, waving-bye, cuddly, thirsty, busy, spooked, nervous, hopeful, chilling, wonder, writing, reading. URLs are collected with `import.meta.glob`.
+**Sprites.** 48 transparent WebP files in `src/assets/tiger/<state>.webp`, collected with `import.meta.glob`. `TIGER_STATES` lists them in this order:
+- **36 emotions**, cut from `design/tiger-emotions-sheet.jpg` (6x6), in sheet reading order: idle, listening, thinking, talking, happy, sad, surprised, laughing, shy, sleeping, bored, angry, scared, excited, disgusted, confused, cheerful, frustrated, sick, shocked, anxious, proud, doubtful, lazy, sad-hello, waving-bye, cuddly, thirsty, busy, spooked, nervous, hopeful, chilling, wonder, writing, reading.
+- **12 reading/writing poses**, cut from `design/tiger-reading-writing-sheet.jpg` (3x4), with their props kept (books, notepad, pencils, paper, crumbs, zzz, stars): opening-book, focused-reading, turning-page, amazed-reading, sleepy-reading, taking-notes, picking-up-pencil, thinking-before-writing, writing-intently, scribbling-fast, erasing-mistake, finished-page. Preview: `docs/ux-v3-status-poses.png`.
 
-**Cutter tool.** `design/tools/cut_tiger_sheet.py` is a dev-only asset tool (not part of the build; the shipped app stays Node/TS). It crops each cell excluding the label, removes the paper with an edge-connected flood fill plus soft threshold (white bellies stay white), drops stray neighbour fragments, and writes the WebP files plus a contact sheet for checking by eye. Needs Pillow, numpy, scipy.
+If a sprite file is missing, `tigerSrc` falls back to the closest emotion, then to idle.
 
-**5 s cycle.** `<Tiger cycle />` follows one global ticker (`TIGER_CYCLE_MS = 5000`) that steps through all 36 states, preloads the next sprite, and skips ticks while `document.hidden`. Each change is a short flip (scale and rotate pop, about 250 ms).
+**Cutter tool.** `design/tools/cut_tiger_sheet.py` is a dev-only asset tool. It is not part of the build; the shipped app stays Node/TS.
+- It takes a sheet config, `--sheet emotions` (the default) or `--sheet reading-writing`, which sets the grid, names, label cut and speck tuning.
+- It crops each cell excluding the label and removes the paper with an edge-connected flood fill plus a soft threshold, so white bellies stay white.
+- It drops stray neighbour fragments; the reading-writing config loosens this rule so props survive.
+- It writes the WebP files plus a contact sheet for checking by eye.
+- Needs Pillow, numpy and scipy.
 
-**Mood priority.** `useTigerMood()` pins a state while the app is busy; the cycling tiger shows it instead of the cycle. First match wins:
-1. a paper section is writing: `writing`
-2. last chat message is a streaming assistant reply: `talking`
-3. last chat message is from the user (no reply yet): `thinking`
-4. a source is rendering or extracting: `reading`
-5. a source newly failed (shown for 4 s; errors restored at launch do not count): `sad`
-6. otherwise none, so the cycle shows.
+**5 s cycle.** `<Tiger cycle />` follows one global ticker (`TIGER_CYCLE_MS = 5000`) that steps through all 48 states, preloads the next sprite, and skips ticks while `document.hidden`. Each change is a short flip (scale and rotate pop, about 250 ms).
+
+**Status engine.** `useTigerStatusEngine()` in `src/lib/tiger.ts` is mounted **once** (`TigerEngine` in `App.tsx`, inside the router, so it also runs on `/setup`).
+- It watches the chat, paper and sources stores and writes one `TigerState | null` into a module store.
+- Every `<Tiger cycle>` reads that store with `useTigerStatus() ?? useTigerCycle()`. `useTigerMood` is a deprecated alias.
+- A 500 ms interval runs only while a section is writing or a source is extracting, so time-based poses (pencil, sleepy, writing speed) can change without a store update. When the app is idle there is no timer.
+
+| Activity | Pose |
+|---|---|
+| Section writing, no text yet, first 2 s | `picking-up-pencil` |
+| Section writing, still no text after 2 s (model loading or prefilling) | `thinking-before-writing` |
+| Text streaming under 40 chars/s (2 s sliding window) | `writing-intently` |
+| Text streaming at 40 chars/s or more | `scribbling-fast` |
+| Section went writing → done (flash 4 s; not after Stop or an error) | `finished-page` |
+| Writer failed (flash 4 s, from `writer.ts` `catch`; not on Stop) | `erasing-mistake` |
+| Chat: assistant reply streaming | `talking` |
+| Chat: a user message sent this session with no reply yet | `thinking` |
+| A source is rendering (PDF pages prepared) | `opening-book` |
+| A source is extracting | `focused-reading` |
+| Same source and page extracting for 45 s or more | `sleepy-reading` |
+| OCR page number advanced (flash 1.5 s) | `turning-page` |
+| A source finished (flash 4 s) | `amazed-reading` |
+| A source failed (flash 4 s) | `sad` |
+
+**Priority.** First match wins:
+1. active writing
+2. chat talking
+3. chat thinking
+4. active reading (a `turning-page` flash beats focused/sleepy reading, but not opening-book)
+5. flashes
+6. null, so the cycle shows.
+
+**Flashes.** `flashTiger(state, ms)` can be called from anywhere.
+- Flash priority: errors (`erasing-mistake`, `sad`) are 3, completions (`finished-page`, `amazed-reading`) are 2, and `turning-page` is 1.
+- A new flash replaces the current one unless the running flash has strictly higher priority.
+- `suppressFinishFlash()` is called by the writer on Stop. Together with the error flash, it keeps finished-page from showing after an abort or a failure.
+
+**Hydration.** Sources and chat messages that already exist when the engine first runs never trigger anything: a restored error doesn't show sad, and the seeded chat thread ending in a user message doesn't pin `thinking`.
 
 **Where each pose is used.**
-- Cycling: header left corner (56px), Settings (64px), paper panel header when not writing (40px).
-- Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Draft generating `busy` (48px), paper panel header while writing `writing`, Sources drop zone `reading` on drag-over / `cuddly` when empty / `idle` otherwise (96px), Sources rows `reading` while extracting and `sad` on error (32px), Setup wizard one state per step, Voice screen a state chosen from the retrain status.
+- Engine-driven (`<Tiger cycle>`): header left corner (56px), Settings (64px), paper panel header (40px), Draft generating (48px).
+- Sources rows (32px): `tigerForSource(source)`, which shows opening-book, focused-reading or sleepy-reading, sad on error, and nothing when done. The rows re-render every second only while something is extracting.
+- Sources drop zone (96px): `reading` on drag-over, `cuddly` with no sources, `taking-notes` when sources exist and none is running, `idle` while one runs.
+- Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Setup wizard one state per step, and on the Voice screen a state chosen from the retrain status.
 
 **Night sticker.** In dark mode the tiger sits on a cream (`#fbf6ea`) disc with a `--line` border and 6% inset, so the graphite line work stays readable. Detected by watching the `dark` class on `<html>`.
 
@@ -131,7 +171,7 @@ The window is a rounded **desk**, and every column floats on it as its own card 
 From the repo root:
 
 ```
-python3 design/tools/cut_tiger_sheet.py [contact.png]
+python3 design/tools/cut_tiger_sheet.py [--sheet emotions|reading-writing] [contact.png]
 ```
 
-Edit or replace `design/tiger-emotions-sheet.jpg` first if the sheet changes. The script overwrites `src/assets/tiger/*.webp` and writes a contact sheet (default `tiger-contact.png` in the current directory) to review by eye. Requires Pillow, numpy and scipy; the script's shebang points at `/opt/homebrew/bin/python3`, so use that interpreter if `python3` lacks them.
+Edit or replace `design/tiger-emotions-sheet.jpg` or `design/tiger-reading-writing-sheet.jpg` first if a sheet changes. The script overwrites that sheet's sprites in `src/assets/tiger/` and writes a contact sheet (default `tiger-contact.png` in the current directory) to review by eye. Requires Pillow, numpy and scipy; the script's shebang points at `/opt/homebrew/bin/python3`, so use that interpreter if `python3` lacks them.

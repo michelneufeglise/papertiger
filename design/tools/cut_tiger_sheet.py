@@ -4,7 +4,7 @@
 Cuts design/tiger-emotions-sheet.jpg (6x6 pencil tigers) into 36 transparent
 WebP sprites at src/assets/tiger/<state>.webp and writes a contact sheet.
 
-Usage (from repo root):  /opt/homebrew/bin/python3 design/tools/cut_tiger_sheet.py [contact.png]
+Usage (from repo root):  /opt/homebrew/bin/python3 design/tools/cut_tiger_sheet.py [--sheet emotions|reading-writing] [contact.png]
 Needs: Pillow, numpy, scipy.
 """
 import sys
@@ -14,37 +14,56 @@ from PIL import Image, ImageDraw
 from scipy import ndimage as ndi
 
 ROOT = Path(__file__).resolve().parents[2]
-SRC = ROOT / "design" / "tiger-emotions-sheet.jpg"
 OUT = ROOT / "src" / "assets" / "tiger"
-CONTACT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("tiger-contact.png")
 
-STATES = ("idle listening thinking talking happy sad surprised laughing shy sleeping bored angry "
-          "scared excited disgusted confused cheerful frustrated sick shocked anxious proud doubtful lazy "
-          "sad-hello waving-bye cuddly thirsty busy spooked nervous hopeful chilling wonder writing reading").split()
+SHEETS = {
+    "emotions": dict(
+        src="tiger-emotions-sheet.jpg",
+        scale=1792 / 1493,  # coordinates measured on a 1493px-wide preview
+        cols=[(20, 275), (275, 515), (515, 750), (750, 978), (978, 1195), (1195, 1460)],
+        # (top, label_top) per row; label_top may be overridden per cell
+        rows=[(135, 400), (448, 712), (760, 1030), (1075, 1340), (1385, 1648), (1700, 1921)],
+        label_top_override={(1, 3): 666, (3, 3): 1340},  # SLEEPING/SNEAKY two-line label
+        # Two-line labels of the row above poke into these cells: start lower.
+        top_override={(4, 3): 1412, (5, 0): 1727, (5, 1): 1727},
+        names=("idle listening thinking talking happy sad surprised laughing shy sleeping bored angry "
+               "scared excited disgusted confused cheerful frustrated sick shocked anxious proud doubtful lazy "
+               "sad-hello waving-bye cuddly thirsty busy spooked nervous hopeful chilling wonder writing reading").split(),
+        # Cells whose side/bottom-edge doodles are intended (zzz, sparkle, lightning, sweat, motion marks).
+        keep_edge_doodles={"sleeping", "wonder", "scared", "doubtful", "spooked", "nervous", "sick", "listening"},
+        side_speck_frac=0.015, bottom_speck_frac=0.002,
+    ),
+    "reading-writing": dict(
+        src="tiger-reading-writing-sheet.jpg",
+        scale=2.0,  # coordinates measured on a 896px-wide preview
+        cols=[(20, 305), (305, 595), (595, 885)],
+        rows=[(82, 332), (362, 618), (652, 868), (928, 1156)],
+        label_top_override={(3, 2): 1128},
+        top_override={(3, 0): 934, (3, 1): 934, (3, 2): 912},
+        names="opening-book focused-reading turning-page amazed-reading sleepy-reading taking-notes "
+              "picking-up-pencil thinking-before-writing writing-intently scribbling-fast erasing-mistake "
+              "finished-page".split(),
+        # props (zzz, motion marks, crumbs, loose pencil, held page) may touch the crop sides
+        keep_edge_doodles={"amazed-reading", "sleepy-reading", "scribbling-fast", "erasing-mistake",
+                           "thinking-before-writing", "finished-page", "turning-page", "picking-up-pencil",
+                           "writing-intently"},
+        side_speck_frac=0.004, bottom_speck_frac=0.0005,
+    ),
+}
+CFG = SHEETS["emotions"]
 
-K = 1792 / 1493  # coordinates below were measured on a 1493px-wide preview
-COLS = [(20, 275), (275, 515), (515, 750), (750, 978), (978, 1195), (1195, 1460)]
-# (top, label_top) per row on the preview; label_top may be overridden per cell
-ROWS = [(135, 400), (448, 712), (760, 1030), (1075, 1340), (1385, 1648), (1700, 1921)]
-LABEL_TOP_OVERRIDE = {(1, 3): 666, (3, 3): 1340}  # SLEEPING/SNEAKY two-line label
-# Two-line labels of the row above poke into these cells: start lower.
-TOP_OVERRIDE = {(4, 3): 1412, (5, 0): 1727, (5, 1): 1727}
 
 PAPER_TOL = 26   # colour distance from paper treated as "paper"
 SOFT = 55        # distance at which alpha reaches 1 in the background region
 
 
 def cell_window(r, c):
-    x0, x1 = COLS[c]
-    top, lab = ROWS[r]
-    top = TOP_OVERRIDE.get((r, c), top)
-    lab = LABEL_TOP_OVERRIDE.get((r, c), lab)
+    x0, x1 = CFG["cols"][c]
+    top, lab = CFG["rows"][r]
+    top = CFG["top_override"].get((r, c), top)
+    lab = CFG["label_top_override"].get((r, c), lab)
+    K = CFG["scale"]
     return int(x0 * K), int(top * K), int(x1 * K), int(lab * K)
-
-
-# Cells whose side/bottom-edge doodles are intended (zzz, sparkle, lightning, sweat, motion marks).
-KEEP_EDGE_DOODLES = {"sleeping", "wonder", "scared", "doubtful", "spooked", "nervous",
-                     "sick", "listening"}
 
 
 def drop_edge_specks(im, name):
@@ -63,9 +82,9 @@ def drop_edge_specks(im, name):
         ys, xs = np.nonzero(m)
         side = xs.min() <= 0 or xs.max() >= W - 1
         bottom = ys.max() >= H - 1
-        if bottom and cnt < 0.002 * total:
+        if bottom and cnt < CFG["bottom_speck_frac"] * total:
             keep[lab == i] = False
-        elif side and cnt < 0.015 * total and name not in KEEP_EDGE_DOODLES:
+        elif side and cnt < CFG["side_speck_frac"] * total and name not in CFG["keep_edge_doodles"]:
             keep[lab == i] = False
     alpha = np.asarray(im.getchannel("A")).copy()
     alpha[~keep] = 0
@@ -123,26 +142,37 @@ def cut(img, r, c):
 
 
 def main():
-    img = Image.open(SRC)
-    sprites = [drop_edge_specks(cut(img, r, c), STATES[r * 6 + c]) for r in range(6) for c in range(6)]
+    global CFG
+    args = sys.argv[1:]
+    sheet = "emotions"
+    if "--sheet" in args:
+        k = args.index("--sheet")
+        sheet = args[k + 1]
+        del args[k:k + 2]
+    CFG = SHEETS[sheet]
+    contact = Path(args[0]) if args else Path("tiger-contact.png")
+    names, cols, nrows = CFG["names"], len(CFG["cols"]), len(CFG["rows"])
+    img = Image.open(ROOT / "design" / CFG["src"])
+    sprites = [drop_edge_specks(cut(img, r, c), names[r * cols + c])
+               for r in range(nrows) for c in range(cols)]
     side = int(max(max(s.size) for s in sprites) * 1.04)
     OUT.mkdir(parents=True, exist_ok=True)
     final = []
-    for name, s in zip(STATES, sprites):
+    for name, s in zip(names, sprites):
         canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
         canvas.paste(s, ((side - s.width) // 2, side - s.height - int(side * 0.015)), s)
         canvas = canvas.resize((320, 320), Image.LANCZOS)
         canvas.save(OUT / f"{name}.webp", "WEBP", quality=82, method=6)
         final.append(canvas)
     cell = 330
-    sheet = Image.new("RGB", (cell * 6, (cell + 24) * 6), (128, 128, 128))
-    dr = ImageDraw.Draw(sheet)
-    for i, (name, s) in enumerate(zip(STATES, final)):
-        x, y = (i % 6) * cell, (i // 6) * (cell + 24)
-        sheet.paste(s, (x + 5, y), s)
+    sheet_im = Image.new("RGB", (cell * cols, (cell + 24) * nrows), (128, 128, 128))
+    dr = ImageDraw.Draw(sheet_im)
+    for i, (name, s) in enumerate(zip(names, final)):
+        x, y = (i % cols) * cell, (i // cols) * (cell + 24)
+        sheet_im.paste(s, (x + 5, y), s)
         dr.text((x + 8, y + cell + 4), name, fill=(255, 255, 255))
-    CONTACT.parent.mkdir(parents=True, exist_ok=True)
-    sheet.save(CONTACT)
+    contact.parent.mkdir(parents=True, exist_ok=True)
+    sheet_im.save(contact)
     print("sprites:", len(final), "canvas side:", side)
 
 

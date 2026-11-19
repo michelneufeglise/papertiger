@@ -176,7 +176,7 @@ export const EditorScreen: React.FC = () => {
                 <h2 className="font-display text-[26px] leading-tight text-fg">
                   <span className="doodle-underline">{currentSection.title}</span>
                 </h2>
-                {isCurrentGenerating && <Tiger state="busy" size={48} className="shrink-0" />}
+                {isCurrentGenerating && <Tiger cycle size={48} className="shrink-0" />}
               </div>
 
               {isCurrentGenerating && (

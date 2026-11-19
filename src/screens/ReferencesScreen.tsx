@@ -5,6 +5,7 @@ import { Upload, Trash2, Eye } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
+import { tigerForSource } from '../lib/tiger'
 import { GlassCard, GlassButton, StatusChip, Stripe, Modal, Chip, Tiger } from '../components/ui'
 import { kindFromName, type Source, type SourceInput, type SourceKind } from '../lib/sources'
 import { useSources, addSource, enqueue, cancel, removeSource } from '../lib/sourcesStore'
@@ -76,6 +77,15 @@ export const ReferencesScreen: React.FC = () => {
   const settings = useSettings()
 
   const sources = useSources()
+  // Re-render once a second while extracting so a row can drift to sleepy-reading.
+  const [, setNow] = useState(0)
+  const anyExtracting = sources.some(s => s.status === 'extracting')
+  useEffect(() => {
+    if (!anyExtracting) return
+    const id = setInterval(() => setNow(n => n + 1), 1000)
+    return () => clearInterval(id)
+  }, [anyExtracting])
+  const rowTiger = (s: Source) => tigerForSource(s)
   const [isDragOver, setIsDragOver] = useState(false)
   const [skipNotices, setSkipNotices] = useState<SkipNotice[]>([])
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null)
@@ -297,7 +307,18 @@ export const ReferencesScreen: React.FC = () => {
                 animate={isDragOver ? { scale: 1.1, rotate: -4 } : { scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 14 }}
               >
-                <Tiger state={isDragOver ? 'reading' : sources.length === 0 ? 'cuddly' : 'idle'} size={96} />
+                <Tiger
+                  state={
+                    isDragOver
+                      ? 'reading'
+                      : sources.length === 0
+                        ? 'cuddly'
+                        : sources.some(s => s.status === 'queued' || s.status === 'rendering' || s.status === 'extracting')
+                          ? 'idle'
+                          : 'taking-notes'
+                  }
+                  size={96}
+                />
               </motion.div>
               <p className="text-center font-display text-[22px] text-fg">
                 {isDragOver ? 'Drop it, I will read it!' : 'Drop PDFs, DOCX or images'}
@@ -349,10 +370,7 @@ export const ReferencesScreen: React.FC = () => {
                           )}
                         </div>
 
-                        {(source.status === 'rendering' || source.status === 'extracting') && (
-                          <Tiger state="reading" size={32} />
-                        )}
-                        {source.status === 'error' && <Tiger state="sad" size={32} />}
+                        {rowTiger(source) && <Tiger state={rowTiger(source)!} size={32} />}
 
                         <StatusChip status={statusChipStatus[source.status]}>{statusLabel(source)}</StatusChip>
 

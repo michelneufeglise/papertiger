@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import clsx from 'clsx'
 import { Zap, Download, Square } from 'lucide-react'
@@ -14,25 +14,13 @@ interface GenerationError {
 export const EditorScreen: React.FC = () => {
   const paper = usePaper()
   const [activeSection, setActiveSection] = useState(paper.sections[0]?.id ?? '')
-  // Snapshot of the active section's content taken right before a generation
-  // starts, so the textarea stays frozen while the streamed text (which lives
-  // in the store, growing live) is shown separately below it with a caret.
-  const [generationBase, setGenerationBase] = useState('')
   const [generationError, setGenerationError] = useState<GenerationError | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const currentSection = paper.sections.find(s => s.id === activeSection) ?? paper.sections[0]
   const isGenerating = paper.sections.some(s => s.status === 'writing')
   const isCurrentGenerating = currentSection?.status === 'writing'
   const totalWordCount = wordCount(paper)
-
-  // While the tiger writes, size the textarea to its content so the streamed text follows it directly.
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = isCurrentGenerating ? `${el.scrollHeight}px` : ''
-  }, [isCurrentGenerating, activeSection])
 
   const handleSectionUpdate = (sectionId: string, content: string) => {
     updateSection(sectionId, { content })
@@ -41,7 +29,6 @@ export const EditorScreen: React.FC = () => {
   const handleGenerateSection = () => {
     if (!currentSection || isGenerating) return
     setGenerationError(null)
-    setGenerationBase(currentSection.content)
     const controller = new AbortController()
     abortControllerRef.current = controller
     generateSection(currentSection.id, controller.signal).catch((e: unknown) => {
@@ -61,13 +48,6 @@ export const EditorScreen: React.FC = () => {
       .join('\n\n')}`
     console.log('Exported:', content)
   }
-
-  // The streamed text produced during this generation, isolated from the
-  // frozen base content the textarea still shows.
-  const streamedText =
-    isCurrentGenerating && currentSection
-      ? currentSection.content.slice(generationBase.length).replace(/^\n\n/, '')
-      : ''
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -187,22 +167,18 @@ export const EditorScreen: React.FC = () => {
                 <p className="mt-1 font-mono text-xs text-danger">{generationError.message}</p>
               )}
 
-              <GlassTextarea
-                ref={textareaRef}
-                value={isCurrentGenerating ? generationBase : currentSection.content}
-                onChange={e => handleSectionUpdate(currentSection.id, e.target.value)}
-                placeholder="Start writing, or generate a draft…"
-                disabled={isCurrentGenerating}
-                className={`mt-4 min-h-[200px] !bg-transparent !border-none !shadow-none !rounded-none !p-0 !text-base leading-[1.7] text-fg placeholder:text-fg-faint disabled:!opacity-100 ${
-                  isCurrentGenerating ? 'flex-none' : 'flex-1'
-                }`}
-              />
-
-              {isCurrentGenerating && (
-                <p className="mt-2 text-base leading-[1.7] text-fg whitespace-pre-wrap">
-                  {streamedText}
+              {isCurrentGenerating ? (
+                <p className="mt-4 flex-1 text-base leading-[1.7] text-fg whitespace-pre-wrap">
+                  {currentSection.content}
                   <span className="text-tiger caret-blink">▍</span>
                 </p>
+              ) : (
+                <GlassTextarea
+                  value={currentSection.content}
+                  onChange={e => handleSectionUpdate(currentSection.id, e.target.value)}
+                  placeholder="Start writing, or generate a draft…"
+                  className="mt-4 flex-1 min-h-[200px] !bg-transparent !border-none !shadow-none !rounded-none !p-0 !text-base leading-[1.7] text-fg placeholder:text-fg-faint"
+                />
               )}
 
               <div className="mt-4 font-mono text-xs text-fg-faint">

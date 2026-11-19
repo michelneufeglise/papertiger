@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { mockPaperSections, mockPaperTitle } from '../mock/paper'
 import { readSettings } from './settings'
 import { writeSection } from './writer'
+import { suppressFinishFlash } from './tiger'
 
 export type SectionStatus = 'empty' | 'writing' | 'done'
 
@@ -120,8 +121,8 @@ export function generateSection(id: string, signal?: AbortSignal): Promise<void>
 /**
  * Mock token stream: appends ~1 character every 15ms to the section's content,
  * setting status to 'writing' while running and 'done' when finished. Honours
- * an AbortSignal (stops mid-stream, leaving status as 'writing' with whatever
- * content streamed so far).
+ * an AbortSignal (stops mid-stream, keeping whatever content streamed so far and
+ * setting status to 'done', like the real writer).
  */
 function generateSectionMock(id: string, signal?: AbortSignal): Promise<void> {
   const section = state.sections.find(s => s.id === id)
@@ -139,7 +140,8 @@ function generateSectionMock(id: string, signal?: AbortSignal): Promise<void> {
       clearInterval(intervalId)
       signal?.removeEventListener('abort', onAbort)
       isGenerating = false
-      if (final) updateSection(id, { status: 'done' })
+      if (!final) suppressFinishFlash()
+      updateSection(id, { status: 'done' })
       resolve()
     }
 

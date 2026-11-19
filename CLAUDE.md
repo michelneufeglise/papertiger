@@ -263,6 +263,19 @@ describing what was planned and what was implemented.
   - Show the pane before testing OCR.
   - Read the tiger's state from its React props, not from the `<img>` list.
 
+### 2026-11-19 — Draft editor streaming gap fixed (Opus plan, Sonnet build)
+- **Cause:** while a section was writing, `EditorScreen` kept the textarea frozen at the pre-generation text (`min-h-[200px]` plus the placeholder) and showed the stream below it as `content.slice(generationBase.length)`.
+  - On an empty section this left a blank 200px box.
+  - The real writer *replaces* content, so regenerating a section with text would have cut the first N characters off the new text.
+- **Fix:** while the current section writes, the card shows the live `content` read-only with the caret, in place of the textarea. When it's done, the editable textarea comes back. `generationBase`, `streamedText` and the textarea auto-height effect are gone.
+- **Mock generator:** Stop now ends in `'done'` with the partial text, like the real writer, and calls `suppressFinishFlash()`. Before, the section stayed `'writing'` forever.
+- **Verified in the browser:**
+  - `npm run build` and `npm run lint` are clean.
+  - A real qwen3 4B run on an empty section streams directly under "writing…" (`docs/ux-v3-draft-writing.png`).
+  - Regenerating Abstract streams only the new text. Stop leaves the partial text editable.
+  - Mock Stop leaves the section editable, and the header tiger returns to the cycle with no finished-page.
+- **Test note:** after Vite hot updates, `await import('/src/lib/paper.ts')` in the console gets a separate, stale store; the app uses `paper.ts?t=…`. Check through the DOM, or reload first.
+
 <!-- Add new entries above this line, newest last. -->
 
 

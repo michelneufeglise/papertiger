@@ -1,248 +1,100 @@
-# papertiger — Design Brief (v2, "Tiger / Paper")
+# UX v3: Sketchbook
 
-Audience: researchers and grad students aged 20–30. They live in dark-mode editors,
-Arc/Raycast/Linear-style tools, and expect an app that feels fast, opinionated and a
-little playful — not a corporate dashboard. Everything runs on-device on an older
-MacBook Air, so the UI must be light on GPU work (small blur surfaces only).
+Pencil-sketch look: cream paper, graphite line work, a little pink blush, and a cartoon tiger mascot. Replaces UX v2 "Tiger / Paper". Source of truth is the code: `src/index.css`, `src/components/ui/*`, `src/lib/tiger.ts`, `src/lib/theme.ts`, `src/components/PaperPanel.tsx`.
 
-## Identity in one line
-A tiger made of paper: warm off-white "paper" text on deep ink, one loud tiger-orange
-accent, and diagonal tiger stripes that only appear when the app is *working*.
+## Palette
 
-## Tokens (CSS custom properties, defined in `src/index.css`)
+Tokens live on `:root` / `html.light` (Sketchbook) and `.dark` (Night) in `src/index.css`, and are re-exposed to Tailwind through `@theme inline` (`bg-panel`, `text-fg-muted`, `bg-rose`, ...). The names `--tiger` and `--ember` are legacy; `--tiger` is now the ink primary.
 
-Dark = default ("Tiger"). Light = "Paper". Toggle with `.dark` on `<html>`.
+| Token | Sketchbook (light, default) | Night (dark) |
+|---|---|---|
+| `--bg` paper | `#f3ead6` | `#24211e` |
+| `--panel` | `#fbf6ea` | `#2e2a26` |
+| `--panel-2` | `#efe4cc` | `#38332e` |
+| `--fg` | `#2a2522` | `#efe6d2` |
+| `--fg-muted` / `--fg-faint` | ink at 68% / 42% | chalk at 68% / 40% |
+| `--line` | ink at 85% | chalk at 80% |
+| `--line-soft` | ink at 20% | chalk at 18% |
+| `--tiger` (primary) | `#2a2522` | `#efe6d2` |
+| `--on-tiger` | `#fbf6ea` | `#24211e` |
+| `--rose` blush | `#e9a3a6` | `#e9a3a6` |
+| `--mint` success | `#5f8a52` | `#8fbf7f` |
+| `--ember` | `#d08a62` | `#d9a27a` |
+| `--danger` red pencil | `#b8504a` | `#e07a70` |
 
-| token          | Tiger (dark)                | Paper (light)               | use |
-|----------------|-----------------------------|-----------------------------|-----|
-| `--bg`         | `#0E0D12`                   | `#F3EEE4`                   | app ground, painted at 84% alpha over native vibrancy |
-| `--panel`      | `rgba(255,255,255,0.045)`   | `rgba(255,255,255,0.55)`    | cards, rail, composer |
-| `--panel-2`    | `rgba(255,255,255,0.08)`    | `rgba(255,255,255,0.8)`     | hovered / raised panels, inputs |
-| `--fg`         | `#F3EEE4`                   | `#14131A`                   | primary text |
-| `--fg-muted`   | `rgba(243,238,228,0.58)`    | `rgba(20,19,26,0.6)`        | secondary text |
-| `--fg-faint`   | `rgba(243,238,228,0.32)`    | `rgba(20,19,26,0.38)`       | labels, placeholders |
-| `--line`       | `rgba(243,238,228,0.10)`    | `rgba(20,19,26,0.10)`       | hairlines, borders |
-| `--tiger`      | `#FF6B1A`                   | `#F25A0A`                   | THE accent: primary buttons, active nav, focus rings, user bubbles |
-| `--ember`      | `#FFB347`                   | `#FFB347`                   | gradient partner of tiger (tiger→ember), never alone |
-| `--mint`       | `#7CF5C6`                   | `#12A97A`                   | success / "on-device" / OCR done |
-| `--rose`       | `#FF5C7A`                   | `#E0405E`                   | errors, destructive |
+Radii: `--r-sm` 10px, `--r-md` 16px, `--r-lg` 22px. There is no orange accent.
 
-Radii: `--r-sm: 10px`, `--r-md: 16px`, `--r-lg: 22px`, pill `999px`.
-Shadows: `--shadow-panel: 0 1px 0 rgba(255,255,255,.06) inset, 0 12px 40px -12px rgba(0,0,0,.6)`.
+Theme logic is in `src/lib/theme.ts`: `applyTheme` sets exactly one of `dark` / `light` on `<html>`, the choice persists in `localStorage` (`papertiger.theme`), and the default is light. Labels: **Sketchbook / Night / Auto**.
 
-Tailwind v4: expose these through `@theme` as `--color-bg`, `--color-panel`, `--color-fg`,
-`--color-tiger` … so classes like `bg-panel`, `text-fg-muted`, `bg-tiger`, `border-line`,
-`rounded-md` work. Add `@custom-variant dark (&:where(.dark, .dark *));` for class-based dark mode.
+## Fonts
 
-## Type
-Self-hosted via fontsource (already installed):
-- `@fontsource-variable/bricolage-grotesque` → `--font-display`. Screen titles, big numbers, wordmark, empty-state headlines. Weight 600–800, tight tracking (`-0.02em`), `font-optical-sizing: auto`.
-- `@fontsource-variable/dm-sans` → `--font-sans`. All body/UI text. 14px base, line-height 1.5.
-- `@fontsource-variable/jetbrains-mono` → `--font-mono`. Metadata: timestamps, file sizes, word counts, page counts, shortcuts, status labels. Usually 11–12px, uppercase with `0.08em` tracking for labels.
+Self-hosted via fontsource, imported in `src/main.tsx`:
+- Display: Patrick Hand (single weight, never fake-bold; `.font-display` forces 400). Titles, nav labels, buttons.
+- Body: Nunito Variable.
+- Mono: JetBrains Mono Variable, for meta text.
 
-Import the three fontsource `index.css` files at the top of `src/index.css`.
+Lucide icons are drawn at pencil weight (stroke 2.25, round caps and joins).
 
-## Surfaces & glass
-- Window is transparent with native Sidebar vibrancy (Tauri). The app root paints
-  `color-mix(in srgb, var(--bg) 84%, transparent)` so vibrancy bleeds through.
-- Atmosphere (in `App.tsx`, fixed, `pointer-events-none`, behind content):
-  1. **Aurora**: one 720px radial gradient `var(--tiger)` → transparent, top-right,
-     opacity 0.28 (dark) / 0.18 (light), `filter: blur(40px)`, 28s ease-in-out drift
-     animation (translate ±40px, scale 1↔1.08). Disabled under `prefers-reduced-motion`.
-  2. **Grain**: SVG `feTurbulence` noise as a data-URI background, opacity 0.05, `mix-blend-mode: overlay`.
-- `.glass` utility: `background: var(--panel); backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid var(--line); box-shadow: var(--shadow-panel)`. Use it on the rail,
-  title bar, composer, modals and cards ONLY — never on full-screen containers (GPU cost).
+## Cartoon component language
 
-## Signature: the stripes
-`.stripes` = `repeating-linear-gradient(135deg, var(--tiger) 0 6px, transparent 6px 14px)`
-with `background-size: 20px 20px` and an animation `stripes-run 0.8s linear infinite`
-that shifts `background-position` by 20px. Meaning: **the tiger is working.**
-Only used for: OCR extracting bar on a source card, the generation-streaming bar in
-Draft, the retraining state in Voice, and the drop zone border while dragging over it.
-Under `prefers-reduced-motion` the animation stops but stripes stay.
+- `.sketch` (alias `.glass`): `--panel` fill, 2px `--line` border, wobbly radius, hard `3px 4px 0 var(--line)` offset shadow, no blur. `.sketch-alt` mirrors the radius so neighbours do not look stamped.
+- `.wobble` / `.wobble-alt`: the wobbly radius alone, for inner pieces.
+- `.sketch-btn`: lifts on hover (`translate(-1px,-1px)`, bigger shadow), presses on click (`translate(2px,3px)`, shadow collapsed).
+- `.hatch` (alias `.stripes`; `.hatch-animate` scrolls it): diagonal pencil hatching, the signature for "the tiger is working". Wrapped by the `Stripe` component.
+- `.doodle-underline`: wavy blush underline under a title.
+- `.highlighter`: blush swipe behind text or icons (active nav item).
+- `.paper-ground`: opaque cream base with SVG fibre grain and very faint ruled lines. Used on the app root; there is no aurora or native vibrancy.
+- `--line` vs `--line-soft`: `--line` is for visible strokes (borders, shadows, grips); `--line-soft` is for quiet dividers and dashed rules.
+- Text on the primary fill uses `--on-tiger` (cream on ink in light, ink on chalk in dark). Primary buttons are filled `--tiger`.
+- Danger and errors use `--danger` (red pencil); success uses `--mint`; focus and active states use `--rose`.
+- Other pieces: `.shimmer` placeholder lines, `.caret-blink`, styled range inputs (blush fill), thin scrollbars.
 
-## App frame
+## Tiger mascot
+
+Code: `src/lib/tiger.ts` (state, cycle, mood) and `src/components/ui/Tiger.tsx`.
+
+**Sprites.** 36 transparent WebP files in `src/assets/tiger/<state>.webp`, cut from `design/tiger-emotions-sheet.jpg` (6x6 sheet). Names, in sheet reading order: idle, listening, thinking, talking, happy, sad, surprised, laughing, shy, sleeping, bored, angry, scared, excited, disgusted, confused, cheerful, frustrated, sick, shocked, anxious, proud, doubtful, lazy, sad-hello, waving-bye, cuddly, thirsty, busy, spooked, nervous, hopeful, chilling, wonder, writing, reading. URLs are collected with `import.meta.glob`.
+
+**Cutter tool.** `design/tools/cut_tiger_sheet.py` is a dev-only asset tool (not part of the build; the shipped app stays Node/TS). It crops each cell excluding the label, removes the paper with an edge-connected flood fill plus soft threshold (white bellies stay white), drops stray neighbour fragments, and writes the WebP files plus a contact sheet for checking by eye. Needs Pillow, numpy, scipy.
+
+**5 s cycle.** `<Tiger cycle />` follows one global ticker (`TIGER_CYCLE_MS = 5000`) that steps through all 36 states, preloads the next sprite, and skips ticks while `document.hidden`. Each change is a short flip (scale and rotate pop, about 250 ms).
+
+**Mood priority.** `useTigerMood()` pins a state while the app is busy; the cycling tiger shows it instead of the cycle. First match wins:
+1. a paper section is writing: `writing`
+2. last chat message is a streaming assistant reply: `talking`
+3. last chat message is from the user (no reply yet): `thinking`
+4. a source is rendering or extracting: `reading`
+5. a source newly failed (shown for 4 s; errors restored at launch do not count): `sad`
+6. otherwise none, so the cycle shows.
+
+**Where each pose is used.**
+- Cycling: rail logo (56px), title bar (24px), Settings (64px), paper panel header when not writing (40px).
+- Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Draft generating `busy` (48px), paper panel header while writing `writing`, Sources drop zone `reading` on drag-over / `cuddly` when empty / `idle` otherwise (96px), Sources rows `reading` while extracting and `sad` on error (32px), Setup wizard one state per step, Voice screen a state chosen from the retrain status.
+
+**Night sticker.** In dark mode the tiger sits on a cream (`#fbf6ea`) disc with a `--line` border and 6% inset, so the graphite line work stays readable. Detected by watching the `dark` class on `<html>`.
+
+## Paper panel
+
+`src/components/PaperPanel.tsx`, the right-hand live preview of the draft, drawn as a pinned page (cream `.sketch-alt` card, slight tilt, offset shadow, tape strip).
+- Default width 480px; resizable from 380px up to 50% of the window; clamped again on window resize.
+- Width persists in `localStorage` (`papertiger.paperPanelWidth`); open/collapsed state in `papertiger.paperPanel`. Collapsed is an 11-unit-wide rail with a vertical "Paper" label.
+- Resize handle on the left edge: `role="separator"`, 16px hit area, grip bar visible at rest (`--line` at 40%), blush on hover, press and keyboard focus. Drag with the pointer, or focus it and press ArrowLeft / ArrowRight to change the width by 24px (clamped and persisted the same way). Exposes `aria-valuenow`, `aria-valuemin`, `aria-valuemax`.
+- Preview shows up to 1800 characters per section; unwritten sections are shimmer lines; the writing section follows the caret.
+
+## Motion and performance
+
+- No `backdrop-filter` anywhere. Surfaces are opaque; this is cheaper on an older MacBook Air.
+- Animate `transform` and `opacity` only. Hover and press effects are transforms plus shadow swaps; no layout-affecting animation.
+- One global timer for the tiger cycle: started with the first subscriber, cleared with the last, paused while the window is hidden. The sprite snapshot is a primitive index so React state stays stable.
+- Reduced motion (`prefers-reduced-motion: reduce`): hatch scrolling, caret blink and shimmer stop, button transitions are removed, and all animation and transition durations collapse to near zero.
+- Springs and pop-ins use framer-motion; keep them short (about 250 ms).
+
+## Regenerating the sprites
+
+From the repo root:
+
 ```
-┌────────────────────────────────────────────────────────────────┐
-│ ● ● ●   Draft                            ● 100% on-device      │  title bar 44px, draggable, glass
-├──────┬─────────────────────────────────────────────────────────┤
-│  pt  │                                                         │
-│      │                                                         │
-│ ▣    │              screen content                             │
-│ Chat │                                                         │
-│      │                                                         │
-│ ▢    │                                                         │
-│ Srcs │                                                         │
-│  …   │                                                         │
-└──────┴─────────────────────────────────────────────────────────┘
-   rail 72px wide, glass, icon + 10px mono label under it
+python3 design/tools/cut_tiger_sheet.py [contact.png]
 ```
-- Title bar: `h-11`, `data-tauri-drag-region`, left padding 88px (macOS traffic lights),
-  screen title in display font 15px/700, right: pill `● 100% on-device` (mint dot, mono 11px).
-- Rail: 72px, vertical, wordmark `pt` at top in display 800 with the "t" in tiger color,
-  nav items = icon (20px) over mono label (10px, uppercase). Active item: a tiger pill
-  (`bg-tiger`, ink-colored icon) that slides between items via framer-motion `layoutId="rail-pill"`.
-  Hover: `bg-panel-2`. Focus-visible: 2px tiger ring.
-- Route transition: opacity + 6px y, 180ms. Keep it subtle.
 
-## Nav labels & routes (paths unchanged)
-| path          | label    | icon (lucide)   |
-|---------------|----------|-----------------|
-| `/`           | Chat     | MessageSquare   |
-| `/references` | Sources  | FolderOpen      |
-| `/editor`     | Draft    | PenLine         |
-| `/style`      | Voice    | AudioWaveform   |
-| `/settings`   | Settings | SlidersHorizontal |
-
-## Component API (`src/components/ui`, keep these exports)
-- `GlassCard({children, className, variant?: 'default'|'raised', as?})` — `.glass`, `rounded-[var(--r-lg)]`, padding left to caller.
-- `GlassButton({variant: 'primary'|'secondary'|'ghost'|'danger', size: 'sm'|'md'|'lg', icon?, children, ...button props})`
-  - primary: `bg-tiger text-[#0E0D12]` font-semibold, hover brightens (`filter: brightness(1.08)`), active scale .97. Pill radius.
-  - secondary: `bg-panel-2 border border-line text-fg`, hover `bg-panel-2`+brighter.
-  - ghost: transparent, `text-fg-muted`, hover `bg-panel-2 text-fg`.
-  - danger: `text-rose` ghost until hover → `bg-rose/15`.
-  - All: `focus-visible:ring-2 ring-tiger ring-offset-0`, `disabled:opacity-40`.
-- `GlassInput`, `GlassTextarea` — `bg-panel-2 border-line rounded-[var(--r-md)] text-fg placeholder:text-fg-faint`, focus: `border-tiger/60` + soft `0 0 0 3px rgba(255,107,26,.18)` ring.
-- `Chip({tone: 'neutral'|'tiger'|'mint'|'rose', mono?, children, onRemove?})` — pill, 11px, mono when `mono`.
-- `StatusChip({status: 'idle'|'processing'|'success'|'error', children})` — dot + label; `processing` shows a tiny 3-bar `.stripes` swatch instead of the dot.
-- `Stripe({className, active?: boolean})` — NEW. A 4px-tall bar that renders `.stripes` (animated while `active`), used for working states.
-- `Kbd({children})` — NEW. mono 10px, `bg-panel-2 border-line rounded-sm px-1.5`.
-- `Sidebar`/`SidebarItem` → now render the rail described above (keep names).
-- `TitleBar({title})` — as above.
-- `Modal({isOpen, onClose, title, children, className})` — backdrop `bg-black/40 backdrop-blur-sm`, panel `.glass rounded-[var(--r-lg)]`, spring in, Esc closes, title in display font.
-
-## Screens
-
-### Chat (`/`)
-- Empty state (when no messages): display headline "What are we writing today?" (40px/700),
-  sub in muted "Tell me the topic, paste notes, or drop a PDF in Sources.", then 3 suggestion
-  chips (tiger outline) that fill the composer: "Outline a methods section", "Summarize my sources", "Turn my notes into an abstract".
-- Thread: max-width 760px centered. User messages right-aligned, `bg-tiger/15 border border-tiger/30`
-  rounded-[var(--r-lg)] with the bottom-right corner `rounded-br-sm`. Assistant messages have
-  NO card: a 24px `pt` glyph avatar (display font, bg-panel-2, rounded) on the left and plain
-  text. Timestamps in mono 11px `text-fg-faint`, shown on hover only (group-hover opacity).
-- Typing indicator: three tiger dots.
-- Composer: sticky bottom, `.glass` pill-ish container (`rounded-[var(--r-lg)]`), textarea auto-grows to 6 lines,
-  left: paperclip ghost button, right: primary send button (icon only, round 36px). Under it a mono hint:
-  `<Kbd>↵</Kbd> send  <Kbd>⇧↵</Kbd> newline` in `text-fg-faint`.
-- Keep existing mock data and canned replies.
-
-### Sources (`/references`)
-- Header: display "Sources" 28px + muted "Everything the paper will be built on. Text is extracted on-device."
-- Drop zone: full-width, dashed `border-line` 2px, `rounded-[var(--r-lg)]`, py-10. Center: an
-  upload icon in a tiger-tinted circle, "Drop PDFs, DOCX or images", mono sub "or" + secondary
-  button "Choose files". On drag-over: border becomes solid tiger and a `Stripe active` bar
-  appears at the top edge of the zone.
-- List (not grid): each source is a row card (`GlassCard`, p-4, flex): a 40px type badge
-  (mono 10px: PDF / DOCX / IMG, on `bg-panel-2`), name (14px/600, truncate), mono meta line
-  `42 pages · 2.4 MB · 7d ago`, then a `StatusChip`, then ghost icon buttons Preview / Remove
-  (remove is `danger`). While `processing`, a `Stripe active` runs along the bottom edge of the card.
-- Count label above list in mono uppercase: `3 SOURCES`.
-- Preview modal: mono meta grid (Type / Size / Pages / OCR) + "Extracted text" block in
-  `bg-panel-2 rounded-[var(--r-md)] p-4` with `max-h-64 overflow-auto`.
-- Keep mock data + simulated OCR completion.
-
-### Draft (`/editor`)
-- Top bar (not glass; just border-b line): editable title as a display-font input
-  (22px/700, transparent bg, no border, tiger caret), right: word count in mono
-  (`1,240 words · 5 sections`), primary "Generate" (Zap) and secondary "Export".
-- Body: left outline rail 200px: mono uppercase label `OUTLINE`, then section buttons showing
-  title + mono word count on the right; active = `bg-panel-2` with a 2px tiger left bar.
-- Editor surface: `GlassCard` raised, p-8, section title in display 20px/700, textarea
-  16px/1.7 line-height DM Sans, no visible border (bg transparent), min-h-full.
-- Generation: when streaming, a `Stripe active` bar at the top of the editor card and the
-  generated text appended live with a blinking tiger caret `▍`. Mono status under title: `writing…`.
-- Keep the mock token stream and export console.log.
-
-### Voice (`/style`)  (was "Style")
-- Header: display "Your voice" + muted "How you write, learned from your edits. Grammar is always corrected."
-- Metrics: 5 cards in a responsive grid (2 cols ≥ md, 3 ≥ xl). Big number in display 32px/700
-  with unit in mono muted next to it, name 13px/600, description 12px muted, thin bar under
-  with tiger→ember gradient fill.
-- Before/after: two `GlassCard`s side by side; chips "Your draft" (neutral) and "Tuned" (mint);
-  text 14px, not italic; a small mono diff hint `+ grammar  = voice` under the tuned one.
-- Tuning: sliders styled: track 4px `bg-panel-2`, filled part tiger, round thumb 18px white
-  with tiger border (style `input[type=range]` in index.css with `-webkit-slider-thumb`).
-  Value badge mono `7 / 10` in tiger chip. Live preview block under.
-- Retrain card: `GlassCard` with a tiger→ember 1px gradient border (use background-clip
-  trick or an outer gradient wrapper), primary button "Learn from my edits"; while
-  retraining show `Stripe active` and mono `learning…`.
-
-### Settings (`/settings`)
-- Header: display "Settings".
-- Sections as `GlassCard`s with a mono uppercase eyebrow (`APPEARANCE`, `MODELS`, `MEMORY`, `ABOUT`).
-- Appearance: segmented control with three options **Paper** (Sun) / **Tiger** (Moon) / **Auto** (Monitor)
-  mapping to light/dark/system; the selected segment is a sliding tiger pill (`layoutId="theme-pill"`).
-  Keep the existing behaviour that toggles `.dark` on `<html>`. Default theme: Auto.
-- Models: two rows: "OCR · unlimited-OCR" and "Writer · lightweight local model", each with a
-  mint `Chip mono` "ON-DEVICE" (not "Cloud" — everything is local) and a muted one-liner.
-- Memory: DB path input + two stat tiles (mono numbers): `24.5 MB`, `1,247 memories`.
-- About: rows Application / Version / Build in a definition-list style with hairlines,
-  secondary button "Check for updates".
-
-## Motion rules
-- Durations 150–250ms, spring for pills/buttons (`stiffness 500, damping 30`).
-- Page enter: opacity 0→1, y 6→0. Lists: stagger 30ms max.
-- Respect `prefers-reduced-motion`: framer `MotionConfig reducedMotion="user"` at the root.
-
-## Copy rules
-Sentence case. Buttons say what happens: "Generate", "Export", "Choose files", "Learn from my edits",
-"Check for updates". No "Submit". Empty states invite action. Never say "Cloud".
-
-## Performance guardrails (old MacBook Air)
-- `backdrop-filter` only on rail, title bar, composer, cards, modal. Never on the page.
-- One aurora blob, blurred once via `filter` on a small element; no `filter` on large containers.
-- No infinite animations except the stripes while working, the typing dots, and the caret.
-
-## Paper panel (right side, added 2026-09-15)
-A persistent right-hand panel that shows the paper as it is being written, visible on
-Chat, Sources and Voice (hidden on Draft, which is the editor itself, and on Setup/Settings).
-
-**State** lives in `src/lib/paper.ts` (external store, `useSyncExternalStore`):
-```ts
-export type SectionStatus = 'empty' | 'writing' | 'done'
-export interface PaperSection { id: string; title: string; content: string; status: SectionStatus }
-export interface Paper { title: string; sections: PaperSection[] }
-export function usePaper(): Paper
-export function setTitle(title: string): void
-export function updateSection(id: string, patch: Partial<PaperSection>): void
-export function wordCount(paper: Paper): number
-export function generateSection(id: string, signal?: AbortSignal): Promise<void>
-// mock token stream (same sample text as the current EditorScreen), sets status 'writing',
-// appends ~1 char / 15 ms to content, ends with status 'done'. Only one generation at a time.
-```
-Initial state: the current mock title; Abstract and Introduction `done` with the mock
-content, Methods / Results / Discussion `empty` with content '' — so the shimmer is visible
-on first launch. `EditorScreen` must be refactored to read/write this store instead of its
-own `useState` (title, sections, generation), keeping its UI unchanged.
-
-**Panel** (`src/components/PaperPanel.tsx`), 360 px wide, `.glass` on the left edge only
-(`border-l border-line`, no rounded corners), full height under the title bar:
-- Header row: mono uppercase `PAPER` + mono `1,240 words`, ghost icon button "Open in Draft"
-  (lucide `PenLine`, navigates `/editor`), and a collapse toggle (lucide `PanelRightClose` /
-  `PanelRightOpen`). Collapsed state is a 44 px strip with a vertical mono label `PAPER` and
-  the open toggle; remember collapsed in `localStorage['papertiger.paperPanel']`.
-- Body: a scrollable "sheet" — `bg-panel` inset, `rounded-[var(--r-lg)]`, `p-6`. Title in
-  display 20px/700, then each section: mono uppercase eyebrow (section title), then
-  - `done`: paragraphs in 13px/1.6 DM Sans `text-fg-muted` (first 900 characters + "…" if longer; the
-    panel is a preview, not the editor).
-  - `writing`: the streamed content so far in `text-fg`, followed by one shimmer line, and a tiger
-    caret `▍` (`.caret-blink`) at the end of the text.
-  - `empty`: 4 shimmer lines of varying width (100 / 92 / 96 / 60 %), 10 px tall, `rounded-full`.
-- The section currently `writing` gets a 2 px tiger bar on its left edge and the sheet auto-scrolls
-  to it while writing.
-- Footer line, mono `text-fg-faint`: `3 of 5 sections written`.
-
-**Shimmer** (`.shimmer` in `src/index.css`): `background: linear-gradient(90deg, var(--panel-2) 0%,
-color-mix(in srgb, var(--tiger) 22%, var(--panel-2)) 50%, var(--panel-2) 100%); background-size: 200% 100%;
-animation: shimmer 1.6s ease-in-out infinite;` with `@keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }`.
-Stops under `prefers-reduced-motion` (static `var(--panel-2)`).
-
-**Frame**: in `App.tsx`, render `<PaperPanel />` as the right-most child of the main flex row
-when `location.pathname` is `/`, `/references` or `/style`. Content column stays `flex-1 min-w-0`.
-
-**Chat hook-up** (demo of the loop): when the user sends a message that contains "write", "draft"
-or "abstract" (case-insensitive), the canned assistant reply becomes "On it — drafting the next
-section on the right." and `generateSection` runs on the first `empty` section (if any). Other
-messages keep the existing random replies.
+Edit or replace `design/tiger-emotions-sheet.jpg` first if the sheet changes. The script overwrites `src/assets/tiger/*.webp` and writes a contact sheet (default `tiger-contact.png` in the current directory) to review by eye. Requires Pillow, numpy and scipy; the script's shebang points at `/opt/homebrew/bin/python3`, so use that interpreter if `python3` lacks them.

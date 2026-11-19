@@ -2,7 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import clsx from 'clsx'
-import logo from '../../assets/logo.svg'
+import { Tiger } from './Tiger'
 
 export interface SidebarItemProps {
   icon: LucideIcon
@@ -20,36 +20,40 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   className,
 }) => {
   return (
-    <button
+    <motion.button
       onClick={onClick}
+      whileHover={{ rotate: -3, scale: 1.05 }}
+      whileTap={{ scale: 0.94 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 18 }}
       className={clsx(
-        'relative w-full flex flex-col items-center gap-1.5 py-2.5 rounded-[var(--r-md)]',
-        'transition-colors duration-150',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger',
-        !active && 'hover:bg-[var(--panel-2)]',
+        'relative w-full flex flex-col items-center gap-0.5 py-2 rounded-[var(--r-md)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose',
         className
       )}
     >
-      {active && (
-        <motion.span
-          layoutId="rail-pill"
-          className="absolute inset-0 rounded-[var(--r-md)] bg-tiger"
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        />
-      )}
-      <Icon
-        size={20}
-        className={clsx('relative z-10', active ? 'text-[#0E0D12]' : 'text-fg-muted')}
-      />
+      <span className="relative flex h-9 w-12 items-center justify-center">
+        {active && (
+          <motion.span
+            layoutId="rail-highlighter"
+            className="highlighter absolute inset-0"
+            transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+          />
+        )}
+        <Icon size={22} className={clsx('relative z-10', active ? 'text-[#2a2522]' : 'text-fg-muted')} />
+      </span>
       <span
         className={clsx(
-          'relative z-10 font-mono text-[10px] uppercase tracking-[0.08em]',
-          active ? 'text-[#0E0D12]' : 'text-fg-faint'
+          'font-display text-[16px] leading-none',
+          active ? 'text-fg' : 'text-fg-muted'
         )}
       >
         {label}
       </span>
-    </button>
+      <span
+        aria-hidden="true"
+        className={clsx('doodle-underline h-[7px] w-8 transition-opacity', active ? 'opacity-100' : 'opacity-0')}
+      />
+    </motion.button>
   )
 }
 
@@ -62,12 +66,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ children, className }) => {
   return (
     <aside
       className={clsx(
-        'glass w-[72px] shrink-0 h-full flex flex-col items-center gap-1 py-4 px-2',
-        'overflow-y-auto',
+        'w-[84px] shrink-0 h-full flex flex-col items-center gap-1 py-3 px-1.5',
+        'bg-panel border-r-2 border-[var(--line)] overflow-y-auto',
         className
       )}
     >
-      <img src={logo} alt="papertiger" className="mb-3 h-9 w-9 select-none" draggable={false} />
+      <Tiger cycle size={56} className="mb-2" alt="papertiger" />
       {children}
     </aside>
   )

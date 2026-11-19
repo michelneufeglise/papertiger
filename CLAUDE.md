@@ -144,6 +144,56 @@ describing what was planned and what was implemented.
 - Applied: `src-tauri/icons/*` regenerated (mobile sets removed), `public/favicon.svg`, `src/assets/logo.svg` in the rail and the wizard welcome.
 - Regenerate icons after editing the SVG: `qlmanage -t -s 1024 -o design design/app-icon.svg && mv design/app-icon.svg.png design/app-icon.png && npx tauri icon design/app-icon.png`, then delete `src-tauri/icons/{android,ios}`.
 
+### 2026-11-19 — Dev launch config
+- `.claude/launch.json` runs the browser preview on port **1430** (`npm run dev -- --port 1430`) so it never collides with `npm run tauri dev`, which needs 1420.
+
+### 2026-11-19 — UX v3 "Sketchbook" plan (Opus)
+- Restyle after the user's reference sheet `design/tiger-emotions-sheet.jpg`: pencil-sketch "Tiger Emotions & States", cream paper, graphite ink, hand-lettered caps, pink blush, 36 tiger poses. Orange and glass are dropped.
+- Decisions:
+  - Light **Sketchbook** is the new default; dark **Night** is kept, with each tiger on a cream sticker.
+  - Fonts are Patrick Hand (display) and Nunito (body).
+  - The cartoon component language is wobbly hand-drawn borders, hard offset shadows, pencil hatching (replacing the stripes) and doodle underlines.
+  - All 36 tigers cycle as the app icon every 5 s, pinned to a mood while the app is busy.
+  - The paper panel is wider and resizable.
+  - The Dock icon is unchanged.
+
+### 2026-11-19 — UX v3 "Sketchbook" implemented (Sonnet)
+- **Sprites:** `design/tools/cut_tiger_sheet.py` (dev-only, Python/PIL, not part of the build) cuts the sheet into `src/assets/tiger/<state>.webp`. There are 36 at 320 px, about 800 KB in total. Paper is removed with an edge flood fill, and neighbour specks with an edge-component rule.
+- **Tiger:**
+  - `src/lib/tiger.ts` has `TIGER_STATES`, one global 5 s ticker (paused while hidden) and `useTigerMood()`. Mood priority is writing > talking > thinking > reading > sad.
+  - `src/components/ui/Tiger.tsx` (`<Tiger cycle|state size/>`) swaps poses with a flip animation.
+  - Tigers appear in the rail, the title bar, the chat avatar, empty states, the paper panel, Draft, Voice, Settings and every wizard step.
+- **Foundation:**
+  - `src/index.css` is rewritten with token names kept: `--tiger` is now ink, `--rose` blush, and there are new `--danger` and `--line-soft` tokens.
+  - New classes `.sketch`, `.sketch-alt`, `.wobble`, `.sketch-btn`, `.hatch`, `.doodle-underline`, `.highlighter` and `.paper-ground`. `.glass` and `.stripes` stay as aliases.
+  - The window background is now opaque paper, so native vibrancy no longer shows.
+  - `THEME_LABELS` live in `theme.ts`; the default theme is light.
+- **Paper panel:** 480 px by default, resizable from 380 px to 50% with the mouse or the arrow keys. The width is persisted as `papertiger.paperPanelWidth`, and the preview shows 1800 characters.
+- **Screens:** all six are restyled, with no logic changes beyond a `justDone` flag on Voice retrain.
+- **Docs:** `docs/DESIGN.md` is rewritten as v3, with screenshots in `docs/ux-v3-*.png`.
+- **Verified:**
+  - `npm run build` and `npm run lint` are clean.
+  - In the browser: the full wizard, all five screens, and Night mode with stickers.
+  - The rail tiger advances every 5 s.
+  - A real chat reply from local Ollama (qwen3 4B): the tiger goes thinking, then talking, then back to cycling.
+  - Panel resize persists across a reload.
+- Note: the Claude browser pane throttles `requestAnimationFrame` (about 2 fps) while it is hidden. That makes framer-motion route transitions look stuck in screenshots. It does not happen in a visible window.
+- **Not yet done:**
+  - Visual QA inside the Tauri window. `npm run tauri dev` builds and launches, but it has not been checked by eye after the restyle.
+  - A reduced-motion pass by hand.
+  - The Dock icon still shows the v2 logo. (Done in the next entry.)
+
+### 2026-11-19 — Idle tiger as the app icon (Sonnet)
+- `design/tools/make_app_icon.py` is dev-only and reuses the cutter's `cut()`. It renders `design/app-icon.png` at 1024 px:
+  - an 824 px cream squircle (185 px radius) with faint grain, a 7 px ink border, and a hard plus a soft shadow;
+  - the idle tiger, cut from the sheet at native resolution (494×609) and upscaled with LANCZOS to about 74% of the squircle height;
+  - the line work treated as graphite alpha with a contrast curve, so the tiger stays legible at 32 px.
+- The v2 icon sources were moved to `design/legacy/`.
+- `src-tauri/icons/*` were regenerated with `npx tauri icon design/app-icon.png`, and the android and ios folders were removed.
+- The favicon is now `public/favicon.png` (64 px), referenced from `index.html`.
+- Regenerate the icon with `/opt/homebrew/bin/python3 design/tools/make_app_icon.py [preview.png]`, then run `npx tauri icon design/app-icon.png`.
+- Verified: preview checked at 1024, 128, 64, 32 and 16 px on light and dark; `npm run build` is clean; `tauri dev` relaunched with the fresh binary. The Dock was not checked by eye.
+
 <!-- Add new entries above this line, newest last. -->
 
 

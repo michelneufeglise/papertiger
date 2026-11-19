@@ -13,11 +13,23 @@ function resolveIsDark(mode: ThemeMode): boolean {
   return mode === 'system' ? prefersDark() : mode === 'dark'
 }
 
-/** Reads the persisted theme choice, falling back to 'system'. */
+/** Reads the persisted theme choice, falling back to 'light' (Sketchbook). */
 export function readStoredMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'system'
-  const stored = window.localStorage.getItem(STORAGE_KEY)
-  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+  if (typeof window === 'undefined') return 'light'
+  let stored: string | null = null
+  try {
+    stored = window.localStorage.getItem(STORAGE_KEY)
+  } catch {
+    stored = null
+  }
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'light'
+}
+
+/** Labels shown by the Settings theme control. */
+export const THEME_LABELS: Record<ThemeMode, string> = {
+  light: 'Sketchbook',
+  dark: 'Night',
+  system: 'Auto',
 }
 
 /**

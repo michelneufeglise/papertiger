@@ -1,5 +1,6 @@
 import React from 'react'
 import clsx from 'clsx'
+import { Tiger } from './Tiger'
 
 export interface TitleBarProps {
   title?: string
@@ -16,20 +17,21 @@ export const TitleBar: React.FC<TitleBarProps> = ({
     <header
       data-tauri-drag-region
       className={clsx(
-        'glass h-11 flex items-center justify-between shrink-0',
+        'h-11 flex items-center justify-between shrink-0 bg-panel border-b-2 border-[var(--line)]',
         'pl-[88px] pr-4 select-none',
         className
       )}
     >
-      <span className="font-display font-bold text-[15px] text-fg truncate">{title}</span>
+      <span className="font-display text-[20px] text-fg truncate">{title}</span>
 
       <div className="flex items-center gap-2">
         {children}
         <span
           data-tauri-drag-region="false"
-          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-[var(--panel-2)] px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] text-fg-muted"
+          className="wobble inline-flex items-center gap-1.5 border-2 border-[var(--line)] bg-panel-2 pl-1 pr-3 h-8 font-display text-[15px] text-fg"
         >
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-mint" />
+          <Tiger cycle size={24} />
+          <span className="inline-block w-2 h-2 rounded-full bg-mint" />
           100% on-device
         </span>
       </div>

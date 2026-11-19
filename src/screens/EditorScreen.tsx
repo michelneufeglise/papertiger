@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import clsx from 'clsx'
 import { Zap, Download, Square } from 'lucide-react'
-import { GlassCard, GlassButton, GlassTextarea, Stripe } from '../components/ui'
+import { GlassCard, GlassButton, GlassTextarea, Stripe, Tiger } from '../components/ui'
 import { usePaper, setTitle, updateSection, generateSection, wordCount } from '../lib/paper'
 import type { Paper } from '../lib/paper'
 
@@ -72,15 +72,15 @@ export const EditorScreen: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center gap-4 px-6 h-16 border-b border-line">
+      <div className="shrink-0 flex items-center gap-4 px-6 h-16 border-b-2 border-[var(--line)]">
         <input
           value={paper.title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Untitled paper"
-          className="min-w-0 flex-1 bg-transparent border-none outline-none font-display text-[22px] font-bold text-fg placeholder:text-fg-faint caret-tiger"
+          className="min-w-0 flex-1 bg-transparent border-none outline-none font-display text-[26px] text-fg placeholder:text-fg-faint caret-tiger"
         />
 
-        <div className="shrink-0 font-mono text-xs text-fg-muted whitespace-nowrap">
+        <div className="shrink-0 font-mono text-xs text-fg-muted whitespace-nowrap wobble border-2 border-dashed border-[var(--line-soft)] px-2.5 py-1 rotate-1">
           {totalWordCount.toLocaleString()} words · {paper.sections.length} sections
         </div>
 
@@ -121,13 +121,13 @@ export const EditorScreen: React.FC = () => {
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Outline rail */}
-        <div className="w-[200px] shrink-0 border-r border-line overflow-y-auto p-3">
-          <div className="px-2 mb-2 font-mono text-[10px] uppercase tracking-[0.08em] text-fg-faint">
+        <div className="w-[210px] shrink-0 border-r-2 border-dashed border-[var(--line-soft)] overflow-y-auto p-3">
+          <div className="px-2 mb-2 font-display text-[19px] text-fg doodle-underline">
             Outline
           </div>
 
-          <div className="flex flex-col gap-1">
-            {paper.sections.map(section => {
+          <div className="flex flex-col gap-2.5 mt-3">
+            {paper.sections.map((section, idx) => {
               const active = section.id === activeSection
               const sectionWords = wordCount({ title: '', sections: [section] } satisfies Paper)
 
@@ -137,20 +137,21 @@ export const EditorScreen: React.FC = () => {
                   onClick={() => setActiveSection(section.id)}
                   disabled={isGenerating && !active}
                   className={clsx(
-                    'relative w-full flex items-center justify-between gap-2 rounded-[var(--r-sm)] pl-4 pr-3 py-2 text-left text-sm transition-colors',
+                    'sketch-btn relative w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-[17px] font-display',
                     'disabled:opacity-40 disabled:pointer-events-none',
-                    active ? 'bg-[var(--panel-2)] text-fg font-semibold' : 'text-fg-muted hover:bg-[var(--panel-2)] hover:text-fg'
+                    idx % 2 ? 'sketch-alt' : 'sketch',
+                    active ? 'text-fg' : 'text-fg-muted hover:text-fg'
                   )}
                 >
                   {active && (
                     <motion.div
                       layoutId="outline-bar"
-                      className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-tiger"
+                      className="highlighter absolute inset-x-1 top-1.5 bottom-1.5 -z-0 -rotate-1"
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     />
                   )}
-                  <span className="truncate">{section.title}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-fg-faint">
+                  <span className="relative truncate">{section.title}</span>
+                  <span className="relative shrink-0 font-mono text-[11px] text-fg-muted">
                     {sectionWords}
                   </span>
                 </button>
@@ -171,16 +172,19 @@ export const EditorScreen: React.FC = () => {
                 <Stripe active className="absolute top-0 left-0 right-0 w-full rounded-none" />
               )}
 
-              <h2 className="font-display text-[20px] font-bold text-fg">
-                {currentSection.title}
-              </h2>
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-display text-[26px] leading-tight text-fg">
+                  <span className="doodle-underline">{currentSection.title}</span>
+                </h2>
+                {isCurrentGenerating && <Tiger state="busy" size={48} className="shrink-0" />}
+              </div>
 
               {isCurrentGenerating && (
-                <div className="mt-1 font-mono text-xs text-tiger">writing…</div>
+                <div className="mt-2 font-mono text-xs text-fg-muted">writing…</div>
               )}
 
               {generationError && generationError.sectionId === currentSection.id && (
-                <p className="mt-1 font-mono text-xs text-rose">{generationError.message}</p>
+                <p className="mt-1 font-mono text-xs text-danger">{generationError.message}</p>
               )}
 
               <GlassTextarea

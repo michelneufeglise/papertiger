@@ -6,12 +6,14 @@ export interface KbdProps {
   className?: string
 }
 
+/** Sketched keycap. */
 export const Kbd: React.FC<KbdProps> = ({ children, className }) => {
   return (
     <kbd
       className={clsx(
         'inline-flex items-center justify-center font-mono text-[10px] leading-none',
-        'bg-[var(--panel-2)] border border-line rounded-sm px-1.5 py-1 text-fg-muted',
+        'bg-panel border-[1.5px] border-[var(--line)] rounded-[5px_3px_6px_3px] px-1.5 py-1 text-fg-muted',
+        'shadow-[1px_2px_0_var(--line)]',
         className
       )}
     >

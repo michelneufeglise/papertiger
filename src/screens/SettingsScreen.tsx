@@ -1,25 +1,25 @@
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Monitor, type LucideIcon } from 'lucide-react'
-import { GlassCard, GlassButton, GlassInput, Chip } from '../components/ui'
-import { useTheme, type ThemeMode } from '../lib/theme'
+import { GlassCard, GlassButton, GlassInput, Chip, Tiger } from '../components/ui'
+import { useTheme, THEME_LABELS, type ThemeMode } from '../lib/theme'
 import { useSettings } from '../lib/settings'
 import { OCR_MODELS, writerById } from '../lib/models'
 
 const themeOptions: { mode: ThemeMode; label: string; icon: LucideIcon }[] = [
-  { mode: 'light', label: 'Paper', icon: Sun },
-  { mode: 'dark', label: 'Tiger', icon: Moon },
-  { mode: 'system', label: 'Auto', icon: Monitor },
+  { mode: 'light', label: THEME_LABELS.light, icon: Sun },
+  { mode: 'dark', label: THEME_LABELS.dark, icon: Moon },
+  { mode: 'system', label: THEME_LABELS.system, icon: Monitor },
 ]
 
 const Eyebrow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-faint mb-4">
-    {children}
-  </p>
+  <h2 className="font-display text-[22px] leading-none text-fg mb-5">
+    <span className="doodle-underline">{children}</span>
+  </h2>
 )
 
-const Hairline: React.FC = () => <div className="border-t border-line" />
+const Hairline: React.FC = () => <div className="border-t-2 border-dashed border-[var(--line-soft)]" />
 
 export const SettingsScreen: React.FC = () => {
   const { mode, setMode, isDark } = useTheme()
@@ -30,6 +30,13 @@ export const SettingsScreen: React.FC = () => {
   const ocrModel = settings.ocrQuant ? OCR_MODELS[settings.ocrQuant] : null
   const writerModel = settings.writerId ? writerById(settings.writerId) : null
 
+  const reduce = useReducedMotion()
+  const pop = (i: number, rot: number) => ({
+    initial: reduce ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.96, rotate: rot },
+    animate: reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, rotate: 0 },
+    transition: reduce ? { duration: 0.15 } : { type: 'spring' as const, stiffness: 380, damping: 22, delay: i * 0.05 },
+  })
+
   const mockDBSize = '24.5 MB'
   const mockDBEntries = '1,247 memories'
 
@@ -37,21 +44,19 @@ export const SettingsScreen: React.FC = () => {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-          <h1 className="font-display text-2xl font-bold text-fg">Settings</h1>
+        <motion.div {...pop(0, -1)}>
+          <h1 className="font-display text-[40px] leading-none text-fg">
+            <span className="doodle-underline">Settings</span>
+          </h1>
         </motion.div>
 
         {/* Appearance */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: 0.03 }}
-        >
+        <motion.div {...pop(1, 1)}>
           <GlassCard className="p-6">
             <Eyebrow>Appearance</Eyebrow>
 
-            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-[var(--panel-2)] border border-line">
-              {themeOptions.map(({ mode: optionMode, label, icon: Icon }) => {
+            <div className="flex flex-wrap items-center gap-3" role="group" aria-label="Theme">
+              {themeOptions.map(({ mode: optionMode, label, icon: Icon }, idx) => {
                 const selected = mode === optionMode
                 return (
                   <button
@@ -59,21 +64,19 @@ export const SettingsScreen: React.FC = () => {
                     type="button"
                     onClick={() => setMode(optionMode)}
                     aria-pressed={selected}
-                    className="relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger"
+                    className={`${idx % 2 ? 'wobble-alt' : 'wobble'} sketch-btn relative border-2 px-4 py-1.5 font-display text-[19px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose ${
+                      selected ? 'border-[var(--line)] text-fg' : 'border-[var(--line-soft)] text-fg-muted'
+                    }`}
                   >
                     {selected && (
                       <motion.div
                         layoutId="theme-pill"
-                        className="absolute inset-0 rounded-full bg-tiger"
+                        className="highlighter absolute inset-0 -z-0 wobble"
                         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                       />
                     )}
-                    <span
-                      className={`relative z-10 flex items-center gap-1.5 ${
-                        selected ? 'text-[#0E0D12]' : 'text-fg-muted'
-                      }`}
-                    >
-                      <Icon size={14} />
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <Icon size={16} />
                       {label}
                     </span>
                   </button>
@@ -81,24 +84,20 @@ export const SettingsScreen: React.FC = () => {
               })}
             </div>
 
-            <p className="font-mono text-[11px] text-fg-faint mt-3">
-              now: {isDark ? 'tiger' : 'paper'}
+            <p className="font-mono text-[11px] text-fg-faint mt-4">
+              now: {isDark ? THEME_LABELS.dark : THEME_LABELS.light}
             </p>
           </GlassCard>
         </motion.div>
 
         {/* Models */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: 0.06 }}
-        >
+        <motion.div {...pop(2, -1)}>
           <GlassCard className="p-6 space-y-5">
             <Eyebrow>Models</Eyebrow>
 
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-fg">
+                <p className="font-display text-[19px] leading-tight text-fg">
                   {ocrModel ? ocrModel.label : 'OCR · not set up'}
                 </p>
                 {ocrModel ? (
@@ -121,7 +120,7 @@ export const SettingsScreen: React.FC = () => {
 
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-fg">
+                <p className="font-display text-[19px] leading-tight text-fg">
                   {writerModel ? writerModel.label : 'Writer · not set'}
                 </p>
                 {writerModel ? (
@@ -145,16 +144,12 @@ export const SettingsScreen: React.FC = () => {
         </motion.div>
 
         {/* Memory */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: 0.09 }}
-        >
+        <motion.div {...pop(3, 1)}>
           <GlassCard className="p-6 space-y-4">
             <Eyebrow>Memory</Eyebrow>
 
             <div>
-              <label htmlFor="db-path" className="block text-sm font-medium text-fg mb-2">
+              <label htmlFor="db-path" className="block font-display text-[18px] text-fg mb-2">
                 Database location
               </label>
               <GlassInput
@@ -170,11 +165,11 @@ export const SettingsScreen: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-[var(--panel-2)] rounded-[var(--r-md)] border border-line">
+              <div className="sketch-alt p-3 -rotate-1">
                 <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-faint">Size</p>
                 <p className="font-mono text-lg text-fg mt-1">{mockDBSize}</p>
               </div>
-              <div className="p-3 bg-[var(--panel-2)] rounded-[var(--r-md)] border border-line">
+              <div className="sketch p-3 rotate-1">
                 <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-faint">Stored</p>
                 <p className="font-mono text-lg text-fg mt-1">{mockDBEntries}</p>
               </div>
@@ -183,13 +178,12 @@ export const SettingsScreen: React.FC = () => {
         </motion.div>
 
         {/* About */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: 0.12 }}
-        >
+        <motion.div {...pop(4, -1)}>
           <GlassCard className="p-6 space-y-4">
-            <Eyebrow>About</Eyebrow>
+            <div className="flex items-start justify-between gap-4">
+              <Eyebrow>About</Eyebrow>
+              <Tiger cycle size={64} className="-mt-3 rotate-6" />
+            </div>
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-fg-muted">Application</span>

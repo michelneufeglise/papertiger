@@ -5,7 +5,7 @@ import { Upload, Trash2, Eye } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
-import { GlassCard, GlassButton, StatusChip, Stripe, Modal, Chip } from '../components/ui'
+import { GlassCard, GlassButton, StatusChip, Stripe, Modal, Chip, Tiger } from '../components/ui'
 import { kindFromName, type Source, type SourceInput, type SourceKind } from '../lib/sources'
 import { useSources, addSource, enqueue, cancel, removeSource } from '../lib/sourcesStore'
 import { useSettings } from '../lib/settings'
@@ -237,8 +237,10 @@ export const ReferencesScreen: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-6 border-b border-line">
-        <h1 className="font-display font-bold text-[28px] tracking-[-0.02em] text-fg mb-1.5">Sources</h1>
+      <div className="p-6 border-b-2 border-[var(--line)]">
+        <h1 className="font-display text-[32px] text-fg mb-1.5">
+          <span className="doodle-underline">Sources</span>
+        </h1>
         <p className="text-sm text-fg-muted">Everything the paper will be built on. Text is extracted on this Mac.</p>
       </div>
 
@@ -246,7 +248,7 @@ export const ReferencesScreen: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="space-y-6 max-w-4xl mx-auto">
           {needsOcrModel && (
-            <div className="flex items-center justify-between gap-4 rounded-[var(--r-md)] border border-tiger/30 bg-tiger/10 px-4 py-3">
+            <div className="flex items-center justify-between gap-4 sketch-alt bg-rose/40 px-4 py-3">
               <p className="text-sm text-fg">Pick an OCR model first</p>
               <GlassButton onClick={() => navigate('/setup')} variant="secondary" size="sm">
                 Open setup
@@ -272,8 +274,8 @@ export const ReferencesScreen: React.FC = () => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`relative overflow-hidden rounded-[var(--r-lg)] border-2 border-dashed py-10 px-6 transition-colors duration-150 ${
-              isDragOver ? 'border-tiger' : 'border-line'
+            className={`wobble relative overflow-hidden border-2 border-dashed py-8 px-6 transition-colors duration-150 ${
+              isDragOver ? 'border-[var(--line)] bg-rose/40' : 'border-[var(--line)] bg-transparent'
             }`}
           >
             <AnimatePresence>
@@ -285,18 +287,23 @@ export const ReferencesScreen: React.FC = () => {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <Stripe active className="rounded-none rounded-t-[var(--r-lg)]" />
+                  <Stripe active className="rounded-none" />
                 </motion.div>
               )}
             </AnimatePresence>
 
             <div className="flex flex-col items-center justify-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-tiger/15">
-                <Upload size={20} className="text-tiger" />
-              </div>
-              <p className="text-center text-sm font-medium text-fg">Drop PDFs, DOCX or images</p>
+              <motion.div
+                animate={isDragOver ? { scale: 1.1, rotate: -4 } : { scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 14 }}
+              >
+                <Tiger state={isDragOver ? 'reading' : sources.length === 0 ? 'cuddly' : 'idle'} size={96} />
+              </motion.div>
+              <p className="text-center font-display text-[22px] text-fg">
+                {isDragOver ? 'Drop it, I will read it!' : 'Drop PDFs, DOCX or images'}
+              </p>
               <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-faint">or</p>
-              <GlassButton onClick={handleChooseFiles} variant="secondary" size="sm">
+              <GlassButton onClick={handleChooseFiles} variant="secondary" size="sm" icon={<Upload size={16} />}>
                 Choose files
               </GlassButton>
               <input
@@ -321,26 +328,31 @@ export const ReferencesScreen: React.FC = () => {
                   {sources.map((source, idx) => (
                     <motion.div
                       key={source.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.18, delay: Math.min(idx * 0.03, 0.3) }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 22, delay: Math.min(idx * 0.04, 0.3) }}
                     >
-                      <GlassCard className="p-4 flex items-center gap-4">
-                        <div className="shrink-0 flex items-center justify-center w-10 h-10 rounded-[var(--r-sm)] bg-[var(--panel-2)] font-mono text-[10px] uppercase tracking-[0.06em] text-fg-muted">
+                      <GlassCard className={`p-4 flex items-center gap-4 overflow-hidden ${idx % 2 ? "sketch-alt" : ""}`}>
+                        <div className="shrink-0 flex items-center justify-center w-10 h-10 wobble-alt border-2 border-[var(--line)] bg-rose/40 font-mono text-[10px] uppercase tracking-[0.06em] text-fg -rotate-3">
                           {typeLabel[source.kind]}
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-fg truncate">{source.name}</p>
+                          <p className="font-display text-[19px] text-fg truncate">{source.name}</p>
                           <p className="font-mono text-[11px] text-fg-faint mt-0.5">
                             {source.pages > 0 ? `${source.pages} ${source.pages === 1 ? 'page' : 'pages'} · ` : ''}
                             {formatFileSize(source.sizeBytes)} · {formatRelativeTime(source.addedAt)}
                           </p>
                           {source.status === 'error' && source.error && (
-                            <p className="text-[11px] text-rose mt-0.5">{source.error}</p>
+                            <p className="text-[11px] text-danger mt-0.5">{source.error}</p>
                           )}
                         </div>
+
+                        {(source.status === 'rendering' || source.status === 'extracting') && (
+                          <Tiger state="reading" size={32} />
+                        )}
+                        {source.status === 'error' && <Tiger state="sad" size={32} />}
 
                         <StatusChip status={statusChipStatus[source.status]}>{statusLabel(source)}</StatusChip>
 
@@ -369,7 +381,7 @@ export const ReferencesScreen: React.FC = () => {
                         {(source.status === 'rendering' || source.status === 'extracting') && (
                           <Stripe
                             active
-                            className="absolute bottom-0 left-0 right-0 w-auto rounded-none rounded-b-[var(--r-lg)]"
+                            className="absolute bottom-0 left-0 right-0 w-auto rounded-none"
                           />
                         )}
                       </GlassCard>
@@ -379,7 +391,7 @@ export const ReferencesScreen: React.FC = () => {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-fg-muted">No sources yet. Drop one above.</p>
+            <p className="font-display text-[19px] text-fg-muted text-center">No sources yet. Drop one above.</p>
           )}
         </div>
       </div>
@@ -422,7 +434,7 @@ export const ReferencesScreen: React.FC = () => {
                   {copied ? 'Copied' : 'Copy text'}
                 </GlassButton>
               </div>
-              <div className="bg-[var(--panel-2)] rounded-[var(--r-md)] p-4 max-h-[60vh] overflow-auto">
+              <div className="sketch-alt p-4 max-h-[60vh] overflow-auto">
                 <p className="font-mono text-[13px] text-fg-muted leading-relaxed whitespace-pre-wrap">
                   {selectedSource.text}
                 </p>

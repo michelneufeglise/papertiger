@@ -10,6 +10,7 @@ export interface GlassCardProps {
   as?: React.ElementType
 }
 
+/** Paper card with a hand-drawn border and hard offset shadow (name kept from the glass era). */
 export const GlassCard: React.FC<GlassCardProps> = ({
   children,
   className,
@@ -25,14 +26,10 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 
   return (
     <Component
-      className={clsx(
-        'glass relative rounded-[var(--r-lg)]',
-        raised && 'bg-[var(--panel-2)]',
-        className
-      )}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      className={clsx('sketch relative', raised && 'bg-[var(--panel-2)]', className)}
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 24 }}
     >
       {children}
     </Component>

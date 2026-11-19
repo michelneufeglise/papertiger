@@ -14,11 +14,12 @@ const legacyToneMap: Record<LegacyChipColor, ChipTone> = {
   error: 'rose',
 }
 
+// rose = blush; errors use --danger via the StatusChip 'error' status.
 const toneStyles: Record<ChipTone, string> = {
-  neutral: 'bg-[var(--panel-2)] border-line text-fg-muted',
-  tiger: 'bg-tiger/15 border-tiger/30 text-tiger',
-  mint: 'bg-mint/15 border-mint/30 text-mint',
-  rose: 'bg-rose/15 border-rose/30 text-rose',
+  neutral: 'bg-panel-2 border-[var(--line-soft)] text-fg-muted',
+  tiger: 'bg-panel border-[var(--line)] text-fg',
+  mint: 'bg-mint/20 border-mint text-mint',
+  rose: 'bg-rose/50 border-[var(--line)] text-fg',
 }
 
 export interface ChipProps {
@@ -45,15 +46,15 @@ export const Chip: React.FC<ChipProps> = ({
   return (
     <motion.div
       className={clsx(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] leading-none',
-        mono && 'font-mono uppercase tracking-[0.08em]',
+        'wobble inline-flex items-center gap-1.5 px-3 py-1 border-2 text-[14px] leading-none font-display',
+        mono && 'font-mono text-[11px] uppercase tracking-[0.08em]',
         toneStyles[resolvedTone],
         className
       )}
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      initial={{ opacity: 0, scale: 0.8, rotate: -4 }}
+      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 20 }}
     >
       <span>{children}</span>
       {onRemove && (
@@ -77,14 +78,14 @@ const statusDotStyles: Record<StatusChipStatus, string> = {
   idle: 'bg-fg-faint',
   processing: 'bg-tiger',
   success: 'bg-mint',
-  error: 'bg-rose',
+  error: 'bg-danger',
 }
 
 const statusTextStyles: Record<StatusChipStatus, string> = {
-  idle: 'text-fg-muted border-line bg-[var(--panel-2)]',
-  processing: 'text-tiger border-tiger/30 bg-tiger/15',
-  success: 'text-mint border-mint/30 bg-mint/15',
-  error: 'text-rose border-rose/30 bg-rose/15',
+  idle: 'text-fg-muted border-[var(--line-soft)] bg-panel-2',
+  processing: 'text-fg border-[var(--line)] bg-rose/50',
+  success: 'text-mint border-mint bg-mint/15',
+  error: 'text-danger border-danger bg-danger/10',
 }
 
 export interface StatusChipProps {
@@ -103,15 +104,15 @@ export const StatusChip: React.FC<StatusChipProps> = ({
   return (
     <div
       className={clsx(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono uppercase tracking-[0.08em] leading-none',
+        'wobble inline-flex items-center gap-1.5 px-3 py-1 border-2 text-[11px] font-mono uppercase tracking-[0.08em] leading-none',
         statusTextStyles[resolved],
         className
       )}
     >
       {resolved === 'processing' ? (
-        <Stripe active className="w-3 h-1.5 rounded-[2px]" />
+        <Stripe active className="w-3 h-2 rounded-[2px]" />
       ) : (
-        <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', statusDotStyles[resolved])} />
+        <span className={clsx('inline-block w-2 h-2 rounded-full', statusDotStyles[resolved])} />
       )}
       <span>{children}</span>
     </div>

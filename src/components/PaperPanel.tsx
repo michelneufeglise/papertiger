@@ -1,12 +1,44 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PenLine, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { usePaper, wordCount } from '../lib/paper'
 import { useSettings } from '../lib/settings'
 import { writerById } from '../lib/models'
+import { Tiger } from './ui/Tiger'
 
 const COLLAPSE_KEY = 'papertiger.paperPanel'
-const PREVIEW_CHAR_LIMIT = 900
+const WIDTH_KEY = 'papertiger.paperPanelWidth'
+const DEFAULT_WIDTH = 480
+const MIN_WIDTH = 380
+const KEY_STEP = 24
+const PREVIEW_CHAR_LIMIT = 1800
+
+function maxWidth(): number {
+  if (typeof window === 'undefined') return 900
+  return Math.max(MIN_WIDTH, Math.floor(window.innerWidth * 0.5))
+}
+
+function clampWidth(w: number): number {
+  return Math.min(Math.max(w, MIN_WIDTH), maxWidth())
+}
+
+function readWidth(): number {
+  try {
+    const raw = window.localStorage.getItem(WIDTH_KEY)
+    const n = raw === null ? NaN : Number(raw)
+    return clampWidth(Number.isFinite(n) ? n : DEFAULT_WIDTH)
+  } catch {
+    return clampWidth(DEFAULT_WIDTH)
+  }
+}
+
+function writeWidth(w: number): void {
+  try {
+    window.localStorage.setItem(WIDTH_KEY, String(Math.round(w)))
+  } catch {
+    // ignore (e.g. storage disabled)
+  }
+}
 
 function readCollapsed(): boolean {
   if (typeof window === 'undefined') return false
@@ -35,6 +67,40 @@ export const PaperPanel: React.FC = () => {
   const settings = useSettings()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const writingSectionRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(readWidth)
+  const widthRef = useRef(width)
+  widthRef.current = width
+
+  useEffect(() => {
+    const onResize = () => setWidth(w => clampWidth(w))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const onHandleDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = widthRef.current
+    const move = (ev: PointerEvent) => setWidth(clampWidth(startW + (startX - ev.clientX)))
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      document.body.style.userSelect = ''
+      writeWidth(widthRef.current)
+    }
+    document.body.style.userSelect = 'none'
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }, [])
+
+  const onHandleKey = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    // The handle is on the left edge: ArrowLeft widens, ArrowRight narrows.
+    const next = clampWidth(widthRef.current + (e.key === 'ArrowLeft' ? KEY_STEP : -KEY_STEP))
+    setWidth(next)
+    writeWidth(next)
+  }, [])
 
   const words = wordCount(paper)
   const doneCount = paper.sections.filter(s => s.status === 'done').length
@@ -58,16 +124,16 @@ export const PaperPanel: React.FC = () => {
 
   if (collapsed) {
     return (
-      <div className="shrink-0 w-11 h-full glass rounded-none border-l border-line flex flex-col items-center py-4 gap-4">
+      <div className="shrink-0 w-11 h-full bg-panel border-l-2 border-[var(--line)] flex flex-col items-center py-4 gap-4">
         <button
           onClick={toggleCollapsed}
-          className="h-7 w-7 inline-flex items-center justify-center rounded-[var(--r-sm)] text-fg-muted hover:bg-[var(--panel-2)] hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger"
+          className="h-7 w-7 inline-flex items-center justify-center rounded-[var(--r-sm)] text-fg-muted hover:bg-rose/50 hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose"
           aria-label="Open paper panel"
         >
           <PanelRightOpen size={15} />
         </button>
         <div
-          className="font-mono text-[10px] uppercase tracking-[0.08em] text-fg-faint select-none"
+          className="font-display text-[16px] text-fg-muted select-none"
           style={{ writingMode: 'vertical-rl' }}
         >
           Paper
@@ -77,10 +143,40 @@ export const PaperPanel: React.FC = () => {
   }
 
   return (
-    <div className="shrink-0 w-[360px] h-full glass rounded-none border-l border-line flex flex-col overflow-hidden">
+    <div
+      className="relative shrink-0 h-full flex flex-col overflow-visible"
+      style={{ width }}
+    >
+      {/* Resize handle on the left edge */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize paper panel"
+        aria-valuenow={Math.round(width)}
+        aria-valuemin={MIN_WIDTH}
+        aria-valuemax={maxWidth()}
+        tabIndex={0}
+        onPointerDown={onHandleDown}
+        onKeyDown={onHandleKey}
+        className="group absolute left-0 top-0 bottom-0 w-4 -translate-x-1/2 z-20 cursor-col-resize flex items-center justify-center focus-visible:outline-none"
+      >
+        <span className="h-16 w-1.5 rounded-full bg-[color-mix(in_srgb,var(--line)_40%,transparent)] group-hover:bg-rose group-active:bg-rose group-focus-visible:bg-rose transition-colors" />
+      </div>
+
+      <div
+        className="sketch-alt relative m-3 ml-4 flex-1 min-h-0 flex flex-col overflow-hidden"
+        style={{ rotate: '0.4deg', boxShadow: '5px 6px 0 var(--line)' }}
+      >
+        {/* Tape strip */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-0.5 left-1/2 z-10 h-5 w-24 -translate-x-1/2 -rotate-2 border border-[var(--line-soft)]"
+          style={{ background: 'color-mix(in srgb, var(--rose) 60%, transparent)' }}
+        />
       {/* Header */}
-      <div className="shrink-0 flex items-center gap-2 px-4 h-14 border-b border-line">
-        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-fg-faint">Paper</span>
+      <div className="shrink-0 flex items-center gap-2 px-4 h-16 pt-2 border-b-2 border-dashed border-[var(--line-soft)]">
+        {writingSection ? <Tiger state="writing" size={40} /> : <Tiger cycle size={40} />}
+        <span className="font-display text-[20px] text-fg">Paper</span>
         <span className="font-mono text-[11px] text-fg-muted whitespace-nowrap">
           {words.toLocaleString()} words
         </span>
@@ -88,14 +184,14 @@ export const PaperPanel: React.FC = () => {
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={() => navigate('/editor')}
-            className="h-7 w-7 inline-flex items-center justify-center rounded-[var(--r-sm)] text-fg-muted hover:bg-[var(--panel-2)] hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger"
+            className="h-7 w-7 inline-flex items-center justify-center rounded-[var(--r-sm)] text-fg-muted hover:bg-rose/50 hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose"
             aria-label="Open in Draft"
           >
             <PenLine size={15} />
           </button>
           <button
             onClick={toggleCollapsed}
-            className="h-7 w-7 inline-flex items-center justify-center rounded-[var(--r-sm)] text-fg-muted hover:bg-[var(--panel-2)] hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger"
+            className="h-7 w-7 inline-flex items-center justify-center rounded-[var(--r-sm)] text-fg-muted hover:bg-rose/50 hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose"
             aria-label="Collapse paper panel"
           >
             <PanelRightClose size={15} />
@@ -104,15 +200,15 @@ export const PaperPanel: React.FC = () => {
       </div>
 
       {showWritingWith && (
-        <div className="shrink-0 px-4 py-1.5 border-b border-line font-mono text-[11px] text-fg-faint">
+        <div className="shrink-0 px-4 py-1.5 border-b-2 border-dashed border-[var(--line-soft)] font-mono text-[11px] text-fg-faint">
           writing with {activeWriter.label}
         </div>
       )}
 
       {/* Body */}
       <div className="flex-1 min-h-0 overflow-y-auto p-3">
-        <div className="bg-panel rounded-[var(--r-lg)] p-6">
-          <h2 className="font-display text-[20px] font-bold text-fg">
+        <div className="p-5">
+          <h2 className="font-display text-[26px] leading-tight text-fg doodle-underline">
             {paper.title || 'Untitled paper'}
           </h2>
 
@@ -133,11 +229,11 @@ export const PaperPanel: React.FC = () => {
                   {isWriting && (
                     <div
                       aria-hidden="true"
-                      className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-full bg-tiger"
+                      className="hatch hatch-animate absolute left-0 top-0.5 bottom-0.5 w-1.5 rounded-full"
                     />
                   )}
 
-                  <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-fg-faint mb-1.5">
+                  <div className="font-display text-[17px] text-fg-muted mb-1">
                     {section.title}
                   </div>
 
@@ -151,7 +247,7 @@ export const PaperPanel: React.FC = () => {
                     <div>
                       <p className="text-[13px] leading-[1.6] text-fg whitespace-pre-wrap">
                         {section.content}
-                        <span className="text-tiger caret-blink">▍</span>
+                        <span className="text-fg caret-blink">▍</span>
                       </p>
                       <div className="shimmer h-[10px] rounded-full mt-2" style={{ width: '70%' }} />
                     </div>
@@ -173,8 +269,9 @@ export const PaperPanel: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 px-4 h-9 flex items-center border-t border-line font-mono text-[11px] text-fg-faint">
+      <div className="shrink-0 px-4 h-9 flex items-center border-t-2 border-dashed border-[var(--line-soft)] font-mono text-[11px] text-fg-faint">
         {doneCount} of {paper.sections.length} sections written
+      </div>
       </div>
     </div>
   )

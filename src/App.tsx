@@ -38,29 +38,7 @@ const AppContent: React.FC = () => {
   const isSetup = location.pathname === '/setup'
 
   return (
-    <div
-      className="relative flex flex-col h-screen w-screen overflow-hidden"
-      style={{ background: 'color-mix(in srgb, var(--bg) 84%, transparent)' }}
-    >
-      {/* Atmosphere: aurora + grain, decorative only */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div
-          className="aurora absolute -top-40 -right-40 w-[720px] h-[720px] rounded-full"
-          style={{
-            background: 'radial-gradient(circle, var(--tiger) 0%, transparent 70%)',
-          }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            opacity: 0.05,
-            mixBlendMode: 'overlay',
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-          }}
-        />
-      </div>
-
+    <div className="paper-ground relative flex flex-col h-screen w-screen overflow-hidden">
       <div className="relative z-10 flex flex-col h-full w-full">
         <TitleBar title={isSetup ? 'Setup' : currentRoute?.name || 'papertiger'} />
 
@@ -89,10 +67,10 @@ const AppContent: React.FC = () => {
                 <motion.div
                   key={location.pathname}
                   className="flex-1 min-h-0 flex flex-col overflow-hidden"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                  transition={{ type: 'spring', stiffness: 520, damping: 26, mass: 0.7 }}
                 >
                   <Routes>
                     {routes.map(route => {

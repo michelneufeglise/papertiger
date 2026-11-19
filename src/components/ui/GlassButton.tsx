@@ -11,16 +11,19 @@ export interface GlassButtonProps
 }
 
 const sizeStyles: Record<NonNullable<GlassButtonProps['size']>, string> = {
-  sm: 'h-8 px-3 text-xs gap-1.5',
-  md: 'h-9 px-4 text-sm gap-2',
-  lg: 'h-11 px-5 text-sm gap-2',
+  sm: 'h-8 px-3 text-[15px] gap-1.5',
+  md: 'h-10 px-4 text-[17px] gap-2',
+  lg: 'h-12 px-6 text-[19px] gap-2',
 }
 
 const variantStyles: Record<NonNullable<GlassButtonProps['variant']>, string> = {
-  primary: 'bg-tiger text-[#0E0D12] font-semibold hover:brightness-[1.08] shadow-sm',
-  secondary: 'bg-[var(--panel-2)] border border-line text-fg hover:brightness-[1.12]',
-  ghost: 'bg-transparent text-fg-muted hover:bg-[var(--panel-2)] hover:text-fg',
-  danger: 'bg-transparent text-rose hover:bg-rose/15',
+  primary:
+    'sketch-btn bg-tiger text-on-tiger border-2 border-[var(--line)] shadow-[3px_4px_0_var(--line)]',
+  secondary:
+    'sketch-btn bg-panel text-fg border-2 border-[var(--line)] shadow-[3px_4px_0_var(--line)]',
+  ghost: 'bg-transparent text-fg-muted hover:bg-rose/40 hover:text-fg transition-colors',
+  danger:
+    'sketch-btn bg-panel text-danger border-2 border-danger shadow-[3px_4px_0_var(--danger)]',
 }
 
 export const GlassButton: React.FC<GlassButtonProps> = ({
@@ -35,10 +38,8 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
   return (
     <button
       className={clsx(
-        'inline-flex items-center justify-center rounded-full font-medium select-none',
-        'transition-[filter,background-color,transform] duration-150 ease-out',
-        'active:scale-[0.97]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger focus-visible:ring-offset-0',
+        'wobble inline-flex items-center justify-center font-display select-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]',
         'disabled:opacity-40 disabled:pointer-events-none',
         sizeStyles[size],
         variantStyles[variant],

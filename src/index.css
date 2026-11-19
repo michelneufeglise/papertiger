@@ -3,46 +3,53 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------- */
-/* Tokens — "Tiger" (dark, default) on :root and .dark,                   */
-/* "Paper" (light) on html.light. Tailwind v4 @theme values are static,   */
-/* so the raw custom properties live here and @theme inline re-exposes    */
-/* them as Tailwind colors/fonts/radii below.                             */
+/* Tokens — "Sketchbook" (light, default) on :root and html.light,        */
+/* "Night sketch" (dark) on .dark. Token names are shared with the older  */
+/* themes so screens keep compiling; --tiger is now INK (primary),        */
+/* --rose is the pink blush, --danger is the red pencil.                  */
+/* Tailwind v4 @theme values are static, so the raw custom properties     */
+/* live here and @theme inline re-exposes them below.                     */
 /* ---------------------------------------------------------------------- */
 
 :root,
-.dark {
-  --bg: #0e0d12;
-  --panel: rgba(255, 255, 255, 0.045);
-  --panel-2: rgba(255, 255, 255, 0.08);
-  --fg: #f3eee4;
-  --fg-muted: rgba(243, 238, 228, 0.58);
-  --fg-faint: rgba(243, 238, 228, 0.32);
-  --line: rgba(243, 238, 228, 0.1);
-  --tiger: #ff6b1a;
-  --ember: #ffb347;
-  --mint: #7cf5c6;
-  --rose: #ff5c7a;
-  --aurora-opacity: 0.28;
+html.light {
+  --bg: #f3ead6;
+  --panel: #fbf6ea;
+  --panel-2: #efe4cc;
+  --fg: #2a2522;
+  --fg-muted: rgba(42, 37, 34, 0.68);
+  --fg-faint: rgba(42, 37, 34, 0.42);
+  --line: rgba(42, 37, 34, 0.85);
+  --line-soft: rgba(42, 37, 34, 0.2);
+  --tiger: #2a2522;
+  --ember: #d08a62;
+  --mint: #5f8a52;
+  --rose: #e9a3a6;
+  --danger: #b8504a;
+  --on-tiger: #fbf6ea;
+  --grain-opacity: 0.5;
 
   --r-sm: 10px;
   --r-md: 16px;
   --r-lg: 22px;
-  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 12px 40px -12px rgba(0, 0, 0, 0.6);
 }
 
-html.light {
-  --bg: #f3eee4;
-  --panel: rgba(255, 255, 255, 0.55);
-  --panel-2: rgba(255, 255, 255, 0.8);
-  --fg: #14131a;
-  --fg-muted: rgba(20, 19, 26, 0.6);
-  --fg-faint: rgba(20, 19, 26, 0.38);
-  --line: rgba(20, 19, 26, 0.1);
-  --tiger: #f25a0a;
-  --ember: #ffb347;
-  --mint: #12a97a;
-  --rose: #e0405e;
-  --aurora-opacity: 0.18;
+.dark {
+  --bg: #24211e;
+  --panel: #2e2a26;
+  --panel-2: #38332e;
+  --fg: #efe6d2;
+  --fg-muted: rgba(239, 230, 210, 0.68);
+  --fg-faint: rgba(239, 230, 210, 0.4);
+  --line: rgba(239, 230, 210, 0.8);
+  --line-soft: rgba(239, 230, 210, 0.18);
+  --tiger: #efe6d2;
+  --ember: #d9a27a;
+  --mint: #8fbf7f;
+  --rose: #e9a3a6;
+  --danger: #e07a70;
+  --on-tiger: #24211e;
+  --grain-opacity: 0.3;
 }
 
 @theme inline {
@@ -53,13 +60,16 @@ html.light {
   --color-fg-muted: var(--fg-muted);
   --color-fg-faint: var(--fg-faint);
   --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
   --color-tiger: var(--tiger);
   --color-ember: var(--ember);
   --color-mint: var(--mint);
   --color-rose: var(--rose);
+  --color-danger: var(--danger);
+  --color-on-tiger: var(--on-tiger);
 
-  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Patrick Hand", "Nunito Variable", ui-rounded, system-ui, sans-serif;
+  --font-sans: "Nunito Variable", ui-rounded, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
 
   --radius-sm: var(--r-sm);
@@ -77,12 +87,11 @@ html.light {
   #root {
     width: 100%;
     height: 100%;
-    background: transparent;
+    background: var(--bg);
   }
 
   body {
     @apply font-sans text-fg antialiased;
-    background: transparent;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -92,86 +101,151 @@ html.light {
     flex-direction: column;
   }
 
+  /* Hand-lettered display face has a single weight; never fake-bold it. */
   .font-display {
-    font-optical-sizing: auto;
+    font-weight: 400 !important;
+    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    background: var(--rose);
+    color: #2a2522;
+  }
+
+  /* Lucide icons at pencil weight. */
+  svg.lucide {
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 }
 
 /* ---------------------------------------------------------------------- */
-/* Glass                                                                   */
+/* Paper ground — opaque cream, fibre grain and very faint ruled lines     */
+/* ---------------------------------------------------------------------- */
+
+.paper-ground {
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 31px,
+      color-mix(in srgb, var(--fg) 5%, transparent) 31px 32px
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-blend-mode: normal;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Sketch — wobbly hand-drawn border, hard offset shadow, no blur          */
 /* ---------------------------------------------------------------------- */
 
 @layer components {
+  .sketch,
   .glass {
     background: var(--panel);
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow-panel);
+    border: 2px solid var(--line);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    box-shadow: 3px 4px 0 var(--line);
+  }
+
+  .sketch-alt {
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 15px 225px 15px 255px / 225px 15px 255px 15px;
+    box-shadow: 3px 4px 0 var(--line);
+  }
+
+  /* Wobbly radius alone (no border/shadow), for inner pieces. */
+  .wobble {
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  }
+  .wobble-alt {
+    border-radius: 15px 225px 15px 255px / 225px 15px 255px 15px;
+  }
+
+  /* Pressable: lifts on hover, presses on click. */
+  .sketch-btn {
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+    cursor: pointer;
+  }
+  .sketch-btn:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 5px 0 var(--line);
+  }
+  .sketch-btn:active:not(:disabled) {
+    transform: translate(2px, 3px);
+    box-shadow: 1px 1px 0 var(--line);
+  }
+
+  /* Wavy hand-drawn underline under a title. */
+  .doodle-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .doodle-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -7px;
+    height: 7px;
+    background-color: var(--rose);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='7' viewBox='0 0 24 7'%3E%3Cpath d='M0 4 Q3 0 6 4 T12 4 T18 4 T24 4' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x left center / 24px 7px;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='7' viewBox='0 0 24 7'%3E%3Cpath d='M0 4 Q3 0 6 4 T12 4 T18 4 T24 4' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x left center / 24px 7px;
+  }
+
+  /* Blush highlighter swipe behind text/icons. */
+  .highlighter {
+    background: var(--rose);
+    border-radius: 12px 4px 14px 5px / 5px 14px 4px 12px;
+    opacity: 0.85;
   }
 }
 
 /* ---------------------------------------------------------------------- */
-/* Signature: stripes — "the tiger is working"                             */
+/* Signature: hatch — "the tiger is working" (pencil hatching)             */
+/* .stripes / .stripes-animate stay as aliases of the old names.           */
 /* ---------------------------------------------------------------------- */
 
+.hatch,
 .stripes {
   background-image: repeating-linear-gradient(
     135deg,
-    var(--tiger) 0 6px,
-    transparent 6px 14px
+    var(--fg) 0 2px,
+    transparent 2px 7px
   );
-  background-size: 20px 20px;
+  background-size: 10px 10px;
+  opacity: 0.8;
 }
 
+.hatch-animate,
 .stripes-animate {
-  animation: stripes-run 0.8s linear infinite;
+  animation: hatch-run 2.4s linear infinite;
 }
 
-@keyframes stripes-run {
+@keyframes hatch-run {
   from {
     background-position: 0 0;
   }
   to {
-    background-position: 20px 0;
+    background-position: 10px 0;
   }
 }
 
 /* ---------------------------------------------------------------------- */
-/* Aurora atmosphere                                                       */
-/* ---------------------------------------------------------------------- */
-
-.aurora {
-  opacity: var(--aurora-opacity);
-  filter: blur(40px);
-  animation: aurora-drift 28s ease-in-out infinite;
-}
-
-@keyframes aurora-drift {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(-40px, 40px) scale(1.08);
-  }
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-}
-
-/* ---------------------------------------------------------------------- */
-/* Shimmer — placeholder text while a section hasn't been written yet      */
+/* Shimmer — pencil-grey placeholder lines                                 */
 /* ---------------------------------------------------------------------- */
 
 .shimmer {
   background: linear-gradient(
     90deg,
     var(--panel-2) 0%,
-    color-mix(in srgb, var(--tiger) 22%, var(--panel-2)) 50%,
+    color-mix(in srgb, var(--rose) 45%, var(--panel-2)) 50%,
     var(--panel-2) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  animation: shimmer 2s ease-in-out infinite;
 }
 
 @keyframes shimmer {
@@ -203,57 +277,59 @@ html.light {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Range input (Voice tuning sliders)                                      */
+/* Range input (Voice tuning sliders) — pencil line, blush fill            */
 /* ---------------------------------------------------------------------- */
 
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px;
+  height: 8px;
   border-radius: 999px;
-  background: var(--panel-2);
+  background: transparent;
   outline: none;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
+  height: 8px;
   border-radius: 999px;
-  background: linear-gradient(to right, var(--tiger) 0%, var(--tiger) var(--range-fill, 50%), var(--panel-2) var(--range-fill, 50%), var(--panel-2) 100%);
+  border: 2px solid var(--line);
+  background: linear-gradient(to right, var(--rose) 0%, var(--rose) var(--range-fill, 50%), var(--panel) var(--range-fill, 50%), var(--panel) 100%);
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  margin-top: -7px;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 2px solid var(--tiger);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  margin-top: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  box-shadow: 2px 2px 0 var(--line);
   cursor: pointer;
 }
 
 input[type="range"]::-moz-range-track {
-  height: 4px;
+  height: 8px;
   border-radius: 999px;
-  background: var(--panel-2);
+  border: 2px solid var(--line);
+  background: var(--panel);
 }
 
 input[type="range"]::-moz-range-progress {
-  height: 4px;
+  height: 8px;
   border-radius: 999px;
-  background: var(--tiger);
+  background: var(--rose);
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 18px;
   height: 18px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 2px solid var(--tiger);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  box-shadow: 2px 2px 0 var(--line);
   cursor: pointer;
 }
 
@@ -262,8 +338,8 @@ input[type="range"]::-moz-range-thumb {
 /* ---------------------------------------------------------------------- */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -271,12 +347,13 @@ input[type="range"]::-moz-range-thumb {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--line);
+  background: var(--fg-faint);
   border-radius: 999px;
+  border: 2px solid var(--bg);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-faint);
+  background: var(--rose);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -284,11 +361,8 @@ input[type="range"]::-moz-range-thumb {
 /* ---------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
+  .hatch-animate,
   .stripes-animate {
-    animation: none;
-  }
-
-  .aurora {
     animation: none;
   }
 
@@ -300,6 +374,12 @@ input[type="range"]::-moz-range-thumb {
   .shimmer {
     animation: none;
     background: var(--panel-2);
+  }
+
+  .sketch-btn,
+  .sketch-btn:hover:not(:disabled),
+  .sketch-btn:active:not(:disabled) {
+    transition: none;
   }
 
   *,

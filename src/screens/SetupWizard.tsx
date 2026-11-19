@@ -1,11 +1,11 @@
-import logo from '../assets/logo.svg'
 import React from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import clsx from 'clsx'
 import { CheckCircle2, ExternalLink, RefreshCw, Cpu, X } from 'lucide-react'
 
-import { GlassCard, GlassButton, Chip, Stripe } from '../components/ui'
+import { GlassCard, GlassButton, Chip, StatusChip, Tiger } from '../components/ui'
+import type { TigerState } from '../lib/tiger'
 import { getHardwareInfo, recommendQuant, recommendWriter, writerFit, type HardwareInfo, type Quant } from '../lib/hardware'
 import { OCR_MODELS, WRITER_FAMILIES, WRITER_MODELS, writerById, type WriterFamily } from '../lib/models'
 import { getStatus, hasModel, pullModel, type OllamaStatus, type PullProgress } from '../lib/ollama'
@@ -41,20 +41,34 @@ const stepVariants = {
 }
 
 const Stepper: React.FC<{ step: StepIndex }> = ({ step }) => (
-  <div className="flex items-center justify-between mb-10">
+  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-8">
     {STEP_LABELS.map((label, i) => {
       const isCurrent = i === step
       const isDone = i < step
       return (
-        <div key={label} className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em]">
-          {isCurrent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-tiger" aria-hidden="true" />}
-          <span className={clsx(isCurrent ? 'text-tiger' : isDone ? 'text-fg-muted' : 'text-fg-faint')}>
-            {label}
-          </span>
+        <div
+          key={label}
+          className={clsx(
+            'font-display text-[19px] leading-none px-1.5 py-1',
+            isCurrent ? 'highlighter -rotate-2 text-fg' : isDone ? 'text-fg-muted line-through decoration-2' : 'text-fg-faint',
+          )}
+          aria-current={isCurrent ? 'step' : undefined}
+        >
+          {isCurrent ? <span className="doodle-underline">{label}</span> : label}
         </div>
       )
     })}
   </div>
+)
+
+const Heading: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <h1 className={clsx('font-display text-[40px] leading-none text-fg', className)}>
+    <span className="doodle-underline">{children}</span>
+  </h1>
+)
+
+const StepTiger: React.FC<{ state: TigerState; size?: number; className?: string }> = ({ state, size = 96, className }) => (
+  <Tiger state={state} size={size} className={clsx('shrink-0', className)} />
 )
 
 export const SetupWizard: React.FC = () => {
@@ -82,6 +96,14 @@ export const SetupWizard: React.FC = () => {
   const [rowProgress, setRowProgress] = React.useState<Record<string, PullProgress | null>>({})
   const [downloadError, setDownloadError] = React.useState<string | null>(null)
   const abortControllerRef = React.useRef<AbortController | null>(null)
+
+  const reduce = useReducedMotion()
+  const [welcomeState, setWelcomeState] = React.useState<TigerState>('waving-bye')
+  React.useEffect(() => {
+    if (step !== 0) return
+    const t = window.setTimeout(() => setWelcomeState('happy'), 2200)
+    return () => window.clearTimeout(t)
+  }, [step])
 
   const recommendation = hw ? recommendQuant(hw) : null
   const effectiveQuant: Quant = selectedQuant ?? recommendation?.quant ?? 'q4'
@@ -239,20 +261,20 @@ export const SetupWizard: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.18 }}
+            transition={reduce ? { duration: 0.12 } : { type: 'spring', stiffness: 420, damping: 26 }}
           >
             {step === 0 && (
               <div>
-                <img src={logo} alt="" className="mb-6 h-28 w-28" draggable={false} />
-                <h1 className="font-display text-3xl font-bold text-fg mb-4">Meet papertiger</h1>
+                <StepTiger state={welcomeState} size={140} className="mb-4 -rotate-3" />
+                <Heading className="mb-5">Meet papertiger</Heading>
                 <ul className="space-y-2.5 mb-8">
                   {[
                     'Reads your sources on-device.',
                     'Writes in your voice.',
                     'Nothing leaves this Mac.',
                   ].map((line) => (
-                    <li key={line} className="flex items-center gap-2.5 text-sm text-fg-muted">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-tiger shrink-0" />
+                    <li key={line} className="flex items-center gap-2.5 text-[15px] text-fg-muted">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose border-2 border-[var(--line)] shrink-0" />
                       {line}
                     </li>
                   ))}
@@ -265,12 +287,15 @@ export const SetupWizard: React.FC = () => {
 
             {step === 1 && (
               <div>
-                <h1 className="font-display text-3xl font-bold text-fg mb-2">Your Mac</h1>
+                <div className="flex items-end gap-4 mb-2">
+                  <StepTiger state={ollama && !ollama.online ? 'sad' : 'wonder'} size={96} className="rotate-3" />
+                  <Heading>Your Mac</Heading>
+                </div>
                 <p className="text-sm text-fg-muted mb-6">
                   We use this to recommend an OCR model that fits your hardware.
                 </p>
 
-                <GlassCard className="p-6 mb-6">
+                <GlassCard className="p-6 mb-6 -rotate-[0.4deg]">
                   {!hw ? (
                     <p className="font-mono text-sm text-fg-faint">Reading your Mac…</p>
                   ) : (
@@ -298,9 +323,7 @@ export const SetupWizard: React.FC = () => {
                             Running · v{ollama.version ?? '?'}
                           </Chip>
                         ) : (
-                          <Chip tone="rose" mono>
-                            Not found
-                          </Chip>
+                          <StatusChip status="error">Not found</StatusChip>
                         )}
                       </dd>
                     </dl>
@@ -343,7 +366,10 @@ export const SetupWizard: React.FC = () => {
 
             {step === 2 && (
               <div>
-                <h1 className="font-display text-3xl font-bold text-fg mb-2">Choose an OCR model</h1>
+                <div className="flex items-end gap-4 mb-2">
+                  <StepTiger state="thinking" size={96} className="-rotate-3" />
+                  <Heading>Choose an OCR model</Heading>
+                </div>
                 <p className="text-sm text-fg-muted mb-6">
                   Both read text the same way. The difference is memory and speed.
                 </p>
@@ -358,26 +384,25 @@ export const SetupWizard: React.FC = () => {
                         type="button"
                         onClick={() => selectQuant(model.quant)}
                         className={clsx(
-                          'relative text-left p-5 rounded-[var(--r-lg)] border transition-colors',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger',
-                          isSelected ? 'border-tiger/60 bg-[var(--panel-2)]' : 'border-line bg-panel hover:bg-[var(--panel-2)]',
+                          'relative text-left p-5 transition-colors sketch-btn',
+                          isRecommended ? 'sketch-alt' : 'sketch',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose',
+                          isSelected ? 'bg-rose/40' : 'hover:bg-[var(--panel-2)]',
                         )}
                       >
+                        {isRecommended && (
+                          <span className="absolute -top-3 right-3 rotate-3 bg-rose border-2 border-[var(--line)] px-2.5 py-0.5 font-display text-[16px] leading-none text-fg wobble">
+                            recommended
+                          </span>
+                        )}
                         {isSelected && (
                           <motion.div
                             layoutId="wizard-pill"
-                            className="absolute inset-0 rounded-[var(--r-lg)] border-2 border-tiger pointer-events-none"
+                            className="absolute inset-1 wobble-alt border-2 border-dashed border-[var(--line)] pointer-events-none"
                             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                           />
                         )}
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <p className="font-display font-bold text-fg text-base">{model.label}</p>
-                          {isRecommended && (
-                            <Chip tone="tiger" mono>
-                              Recommended
-                            </Chip>
-                          )}
-                        </div>
+                        <p className="font-display text-[22px] leading-tight text-fg mb-2">{model.label}</p>
                         <p className="text-sm text-fg-muted mb-3">{model.blurb}</p>
                         <p className="font-mono text-[11px] text-fg-faint uppercase tracking-[0.08em]">
                           {fmtGb(model.downloadGb)} GB download · {fmtGb(model.residentGb)} GB memory
@@ -397,8 +422,9 @@ export const SetupWizard: React.FC = () => {
 
             {step === 3 && (
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <h1 className="font-display text-3xl font-bold text-fg">Choose a writer</h1>
+                <div className="flex flex-wrap items-end gap-4 mb-2">
+                  <StepTiger state="listening" size={96} className="rotate-3" />
+                  <Heading>Choose a writer</Heading>
                   <Chip tone="tiger" mono>
                     Optional
                   </Chip>
@@ -417,7 +443,7 @@ export const SetupWizard: React.FC = () => {
                         const variants = WRITER_MODELS.filter((m) => m.family === family)
                         return (
                           <GlassCard key={family} className="p-5">
-                            <p className="font-display font-bold text-fg text-base mb-1">{info.name}</p>
+                            <p className="font-display text-[22px] leading-tight text-fg mb-1">{info.name}</p>
                             <p className="text-sm text-fg-muted mb-4">{info.blurb}</p>
                             <div className="grid grid-cols-2 gap-2">
                               {variants.map((model) => {
@@ -433,12 +459,12 @@ export const SetupWizard: React.FC = () => {
                                     onClick={() => setSelectedWriterVariantId(model.id)}
                                     title={fit.note || undefined}
                                     className={clsx(
-                                      'relative text-left px-3 py-2.5 rounded-[var(--r-md)] border transition-colors',
-                                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger',
+                                      'relative text-left px-3 py-2.5 border-2 transition-colors wobble',
+                                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose',
                                       disabled && 'opacity-40 pointer-events-none',
                                       isSelected
-                                        ? 'bg-tiger border-tiger text-[#0E0D12]'
-                                        : 'border-line bg-panel hover:bg-[var(--panel-2)] text-fg',
+                                        ? 'bg-tiger border-[var(--line)] text-on-tiger'
+                                        : 'border-[var(--line-soft)] bg-panel hover:bg-rose/30 text-fg',
                                     )}
                                   >
                                     {isRecommended && (
@@ -446,17 +472,17 @@ export const SetupWizard: React.FC = () => {
                                         aria-hidden="true"
                                         className={clsx(
                                           'absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full',
-                                          isSelected ? 'bg-[#0E0D12]' : 'bg-tiger',
+                                          isSelected ? 'bg-rose' : 'bg-tiger',
                                         )}
                                       />
                                     )}
-                                    <p className={clsx('text-sm font-semibold', isSelected ? 'text-[#0E0D12]' : 'text-fg')}>
+                                    <p className={clsx('font-display text-[17px] leading-tight', isSelected ? 'text-on-tiger' : 'text-fg')}>
                                       {model.params} · {model.quant.toUpperCase()}
                                     </p>
                                     <p
                                       className={clsx(
                                         'font-mono text-[11px] mt-0.5',
-                                        isSelected ? 'text-[#0E0D12]/70' : 'text-fg-faint',
+                                        isSelected ? 'text-on-tiger/70' : 'text-fg-faint',
                                       )}
                                     >
                                       {fmtGb(model.downloadGb)} GB
@@ -465,7 +491,7 @@ export const SetupWizard: React.FC = () => {
                                       <p
                                         className={clsx(
                                           'font-mono text-[10px] mt-1 leading-snug',
-                                          fit.fit === 'tight' ? 'text-ember' : isSelected ? 'text-[#0E0D12]/70' : 'text-fg-faint',
+                                          fit.fit === 'no' ? 'text-danger' : fit.fit === 'tight' ? 'text-ember' : 'text-mint',
                                         )}
                                       >
                                         {fit.note}
@@ -502,7 +528,10 @@ export const SetupWizard: React.FC = () => {
 
             {step === 4 && (
               <div>
-                <h1 className="font-display text-3xl font-bold text-fg mb-2">Setting up your models</h1>
+                <div className="flex items-end gap-4 mb-2">
+                  <StepTiger state={anyRowError ? 'confused' : 'busy'} size={96} className="-rotate-3" />
+                  <Heading>Setting up your models</Heading>
+                </div>
                 <p className="text-sm text-fg-muted mb-6">
                   {downloadRows.length > 1
                     ? `${effectiveModel.label}, then ${writerModel?.label ?? 'your writer'}.`
@@ -520,7 +549,7 @@ export const SetupWizard: React.FC = () => {
                     return (
                       <GlassCard key={row.key} className="p-6">
                         <div className="flex items-center justify-between gap-3 mb-3">
-                          <p className="font-display font-bold text-fg text-base">{row.label}</p>
+                          <p className="font-display text-[22px] leading-tight text-fg">{row.label}</p>
                           {status === 'have' && (
                             <Chip tone="mint" mono>
                               Already on this Mac
@@ -539,11 +568,9 @@ export const SetupWizard: React.FC = () => {
 
                         {status === 'pulling' && (
                           <div>
-                            <Stripe active className="mb-3" />
-                            <div className="h-2 rounded-full bg-[var(--panel-2)] overflow-hidden mb-3">
+                            <div className="h-4 wobble border-2 border-[var(--line)] bg-panel-2 overflow-hidden mb-3">
                               <motion.div
-                                className="h-full rounded-full"
-                                style={{ background: 'linear-gradient(90deg, var(--tiger), var(--ember))' }}
+                                className="hatch hatch-animate h-full border-r-2 border-[var(--line)] bg-tiger"
                                 animate={{ width: `${percent}%` }}
                                 transition={{ duration: 0.2 }}
                               />
@@ -559,7 +586,7 @@ export const SetupWizard: React.FC = () => {
 
                         {status === 'error' && (
                           <div>
-                            <p className="text-sm text-rose mb-1">Something went wrong.</p>
+                            <p className="font-display text-[18px] text-danger mb-1">Something went wrong.</p>
                             <p className="font-mono text-[11px] text-fg-faint">{downloadError}</p>
                           </div>
                         )}
@@ -595,7 +622,8 @@ export const SetupWizard: React.FC = () => {
 
             {step === 5 && (
               <div>
-                <h1 className="font-display text-3xl font-bold text-fg mb-2">You're set</h1>
+                <StepTiger state="excited" size={140} className="mb-2 rotate-3" />
+                <Heading className="mb-4">You're set</Heading>
                 <ul className="space-y-2 mb-8">
                   <li className="text-sm text-fg-muted">
                     {effectiveModel.label} is ready · {fmtGb(effectiveModel.residentGb)} GB in memory when in use.

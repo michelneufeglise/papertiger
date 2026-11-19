@@ -25,7 +25,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-[#2a2522]/45 z-40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -36,18 +36,15 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             <motion.div
               role="dialog"
               aria-modal="true"
-              className={clsx(
-                'glass rounded-[var(--r-lg)] max-w-md w-full pointer-events-auto',
-                className
-              )}
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              className={clsx('sketch max-w-md w-full pointer-events-auto', className)}
+              initial={{ opacity: 0, scale: 0.9, y: 14, rotate: -2 }}
+              animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 8, rotate: 1.5 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 22 }}
             >
               {title && (
-                <div className="border-b border-line px-6 py-4">
-                  <h2 className="font-display font-bold text-[17px] text-fg">{title}</h2>
+                <div className="border-b-2 border-dashed border-[var(--line-soft)] px-6 py-4">
+                  <h2 className="font-display text-[22px] text-fg">{title}</h2>
                 </div>
               )}
               <div className="p-6">{children}</div>

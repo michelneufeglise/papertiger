@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Send, Paperclip, X } from 'lucide-react'
-import { GlassButton, Kbd } from '../components/ui'
+import { GlassButton, Kbd, Tiger } from '../components/ui'
 import { useChat, sendMessage, clear } from '../lib/chat'
 import { useSettings } from '../lib/settings'
 
@@ -118,9 +118,9 @@ export const ChatScreen: React.FC = () => {
             <div className="flex justify-end mb-2">
               <button
                 onClick={handleClear}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-mono uppercase tracking-[0.08em] text-fg-faint hover:text-fg-muted hover:bg-[var(--panel-2)] transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-display text-[17px] text-fg-muted hover:text-fg hover:bg-rose/40 transition-colors"
               >
-                <X size={12} />
+                <X size={14} />
                 Clear
               </button>
             </div>
@@ -133,21 +133,29 @@ export const ChatScreen: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <h1 className="font-display font-bold text-[40px] leading-tight text-fg mb-3">
-                What are we writing today?
+              <motion.div
+                initial={{ scale: 0.6, rotate: -8, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 14 }}
+              >
+                <Tiger state="hopeful" size={140} alt="papertiger" />
+              </motion.div>
+              <h1 className="font-display text-[40px] leading-tight text-fg mt-2 mb-3">
+                <span className="doodle-underline">What are we writing today?</span>
               </h1>
               <p className="text-sm text-fg-muted max-w-sm mb-8">
                 Tell me the topic, paste notes, or drop a PDF in Sources.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg">
+              <div className="flex flex-wrap items-center justify-center gap-3 max-w-lg">
                 {suggestions.map((suggestion, i) => (
                   <motion.button
                     key={suggestion}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="px-3.5 py-2 rounded-full border border-tiger/40 text-tiger text-sm hover:bg-tiger/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: i * 0.03 }}
+                    className={`sketch-btn ${i % 2 ? 'sketch-alt' : 'sketch'} px-4 py-2 font-display text-[18px] text-fg hover:bg-rose/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose`}
+                    style={{ rotate: i === 0 ? -2 : i === 1 ? 1.5 : -1 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 18, delay: 0.1 + i * 0.06 }}
                   >
                     {suggestion}
                   </motion.button>
@@ -155,39 +163,51 @@ export const ChatScreen: React.FC = () => {
               </div>
             </motion.div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <AnimatePresence mode="popLayout">
                 {visibleMessages.map((message, i) => (
                   <motion.div
                     key={message.id}
                     className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 12, scale: 0.94 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2, delay: Math.min(i * 0.03, 0.15) }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 24, delay: Math.min(i * 0.03, 0.15) }}
                   >
                     {message.role === 'user' ? (
                       <div className="max-w-[85%] flex flex-col items-end">
-                        <div className="px-4 py-3 bg-tiger/15 border border-tiger/30 rounded-[var(--r-lg)] rounded-br-sm">
-                          <p className="text-sm text-fg leading-relaxed whitespace-pre-wrap">
+                        <div className="relative px-4 py-3 bg-tiger text-on-tiger border-2 border-[var(--line)] wobble shadow-[3px_4px_0_var(--line)]">
+                          <span
+                            aria-hidden="true"
+                            className="absolute -right-[7px] bottom-3 h-3 w-3 rotate-45 bg-tiger border-t-2 border-r-2 border-[var(--line)]"
+                          />
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
                             {renderRich(message.content)}
                           </p>
                         </div>
-                        <span className="mt-1 px-1 font-mono text-[11px] text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="mt-1.5 px-1 font-mono text-[11px] text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity">
                           {formatTimestamp(message.timestamp)}
                         </span>
                       </div>
                     ) : (
-                      <div className="max-w-[85%] flex gap-3">
-                        <div className="shrink-0 w-6 h-6 rounded-[var(--r-sm)] bg-[var(--panel-2)] flex items-center justify-center font-display font-bold text-[11px] text-fg">
-                          pt
-                        </div>
-                        <div className="flex flex-col items-start pt-0.5">
-                          <p className="text-sm text-fg leading-relaxed whitespace-pre-wrap">
-                            {renderRich(message.content)}
-                            {message.streaming && <span className="text-tiger caret-blink">▍</span>}
-                          </p>
-                          <span className="mt-1 font-mono text-[11px] text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="max-w-[85%] flex gap-3 items-start">
+                        <Tiger
+                          cycle={!message.streaming}
+                          state={message.streaming ? 'talking' : undefined}
+                          size={36}
+                        />
+                        <div className="flex flex-col items-start">
+                          <div className="sketch relative px-4 py-3">
+                            <span
+                              aria-hidden="true"
+                              className="absolute -left-[7px] bottom-3 h-3 w-3 rotate-45 bg-[var(--panel)] border-b-2 border-l-2 border-[var(--line)]"
+                            />
+                            <p className="text-sm text-fg leading-relaxed whitespace-pre-wrap">
+                              {renderRich(message.content)}
+                              {message.streaming && <span className="text-fg caret-blink">▍</span>}
+                            </p>
+                          </div>
+                          <span className="mt-1.5 px-1 font-mono text-[11px] text-fg-faint opacity-0 group-hover:opacity-100 transition-opacity">
                             {formatTimestamp(message.timestamp)}
                           </span>
                         </div>
@@ -200,20 +220,22 @@ export const ChatScreen: React.FC = () => {
                   <motion.div
                     key="typing-indicator"
                     className="flex justify-start"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 12, scale: 0.94 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 24 }}
                   >
-                    <div className="flex gap-3">
-                      <div className="shrink-0 w-6 h-6 rounded-[var(--r-sm)] bg-[var(--panel-2)] flex items-center justify-center font-display font-bold text-[11px] text-fg">
-                        pt
-                      </div>
-                      <div className="flex items-center gap-1.5 pt-2.5">
+                    <div className="flex gap-3 items-start">
+                      <Tiger state="thinking" size={36} />
+                      <div className="sketch relative px-4 py-3 flex items-center gap-1.5">
+                        <span
+                          aria-hidden="true"
+                          className="absolute -left-[7px] bottom-3 h-3 w-3 rotate-45 bg-[var(--panel)] border-b-2 border-l-2 border-[var(--line)]"
+                        />
                         {[0, 1, 2].map(i => (
                           <motion.span
                             key={i}
-                            className="w-1.5 h-1.5 rounded-full bg-tiger"
+                            className="w-2 h-2 rounded-full bg-tiger"
                             animate={{ y: [0, -4, 0] }}
                             transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.12 }}
                           />
@@ -234,16 +256,16 @@ export const ChatScreen: React.FC = () => {
           {!writerConfigured && (
             <p className="mb-2 px-1 font-mono text-[11px] text-fg-faint">
               No writer yet — replies are canned. Add one in{' '}
-              <Link to="/setup?step=writer" className="text-tiger hover:underline">
+              <Link to="/setup?step=writer" className="text-fg underline decoration-wavy decoration-rose underline-offset-2">
                 Settings
               </Link>
               .
             </p>
           )}
 
-          <div className="glass rounded-[var(--r-lg)] p-2.5 flex items-end gap-2">
+          <div className="sketch p-2.5 flex items-end gap-2">
             <button
-              className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-full text-fg-muted hover:bg-[var(--panel-2)] hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tiger"
+              className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-full text-fg-muted hover:bg-rose/40 hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose"
               aria-label="Attach a file"
             >
               <Paperclip size={18} />
@@ -254,7 +276,7 @@ export const ChatScreen: React.FC = () => {
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Tell me the topic, paste notes, or ask a question…"
+              placeholder="Topic, notes, or a question…"
               className="flex-1 resize-none border-0 bg-transparent px-1.5 py-2 text-sm text-fg placeholder:text-fg-faint outline-none"
               rows={1}
               style={{ minHeight: MIN_TEXTAREA_HEIGHT_PX, maxHeight: MAX_TEXTAREA_HEIGHT_PX }}
@@ -264,7 +286,7 @@ export const ChatScreen: React.FC = () => {
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || isSending}
               variant="primary"
-              className="shrink-0 h-9 w-9 !p-0 rounded-full"
+              className="shrink-0 h-10 w-10 !p-0 rounded-full"
               aria-label="Send message"
             >
               <Send size={16} />

@@ -22,6 +22,9 @@ export type { ModalProps } from './Modal'
 export { Stripe } from './Stripe'
 export type { StripeProps } from './Stripe'
 
+export { Tiger } from './Tiger'
+export type { TigerProps } from './Tiger'
+
 export { Kbd } from './Kbd'
 export type { KbdProps } from './Kbd'
 

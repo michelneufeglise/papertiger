@@ -32,7 +32,45 @@ alpha = alpha * alpha * (3 - 2 * alpha)  # smoothstep keeps soft dry-brush edges
 
 ys, xs = np.where(alpha > 0.15)
 box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
-a = Image.fromarray((alpha * 255).astype(np.uint8)).crop(box)
+al = alpha[box[1]:box[3], box[0]:box[2]]
+
+# Close the wide word gap so it reads as one word ("PaperTiger"): find the widest run of
+# near-empty columns in the middle band and shrink it to a letter-spacing-sized gap.
+GAP_THRESH = 0.02   # column alpha sum below this * crop height counts as empty
+GAP_KEEP = 0.015    # gap kept, as a fraction of crop height
+ch, cw = al.shape
+GAP_OVERLAP = float(__import__('os').environ.get('GAP_OVERLAP', '0.14'))  # extra left shift of "Tiger", fraction of crop height
+col = al.sum(axis=0)
+empty = col < GAP_THRESH * ch
+lo_c, hi_c = int(cw * 0.30), int(cw * 0.70)
+best = (0, 0)
+i = lo_c
+while i < hi_c:
+    if empty[i]:
+        j = i
+        while j < hi_c and empty[j]:
+            j += 1
+        if j - i > best[1] - best[0]:
+            best = (i, j)
+        i = j
+    else:
+        i += 1
+gs, ge = best
+keep = round(GAP_KEEP * ch)
+if ge - gs > keep:
+    cut = (ge - gs) - keep
+    left, right = al[:, : gs + keep // 2], al[:, ge - (keep - keep // 2) :]
+    # Overlap: slide "Tiger" further left and composite with per-pixel max so the T's
+    # crossbar tail can sit over the r's arm without clipping either glyph.
+    ov = round(GAP_OVERLAP * ch)
+    W = left.shape[1] + right.shape[1] - ov
+    merged = np.zeros((ch, W), dtype=al.dtype)
+    merged[:, : left.shape[1]] = left
+    x0 = left.shape[1] - ov
+    merged[:, x0 : x0 + right.shape[1]] = np.maximum(merged[:, x0 : x0 + right.shape[1]], right)
+    al = merged
+    print(f"gap run {gs}-{ge} ({ge-gs}px), removed {cut}px, kept {keep}px (crop {cw}x{ch})")
+a = Image.fromarray((al * 255).astype(np.uint8))
 
 inner_h = HEIGHT - 2 * PAD
 w = round(a.width * inner_h / a.height)

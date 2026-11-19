@@ -263,7 +263,14 @@ export interface ChatOptions {
   numCtx?: number
   temperature?: number
   keepAlive?: string
+  /** Sent as `options.num_predict` (max tokens to generate). */
+  numPredict?: number
+  /** Called once with the stats from the final NDJSON line (`done_reason` defaults to 'stop'). */
+  onDone?: (info: { doneReason: string; evalCount?: number; evalDuration?: number }) => void
 }
+
+/** Models that rejected the `think` field with HTTP 400; later calls skip it instead of failing first. */
+const thinkUnsupported = new Set<string>()
 
 class ChatHttpError extends OllamaError {
   status: number
@@ -291,10 +298,11 @@ async function chatOnce(
     options: {
       num_ctx: opts?.numCtx,
       temperature: opts?.temperature,
+      num_predict: opts?.numPredict,
     },
   }
   if (opts?.keepAlive !== undefined) body.keep_alive = opts.keepAlive
-  if (includeThink && opts?.think !== undefined) body.think = opts.think
+  if (includeThink && opts?.think !== undefined && !thinkUnsupported.has(tag)) body.think = opts.think
 
   const res = await fetchOllama('/api/chat', {
     method: 'POST',
@@ -317,7 +325,14 @@ async function chatOnce(
   const processLine = (line: string) => {
     const trimmed = line.trim()
     if (!trimmed) return
-    let parsed: { message?: { content?: unknown }; done?: unknown; error?: unknown }
+    let parsed: {
+      message?: { content?: unknown }
+      done?: unknown
+      error?: unknown
+      done_reason?: unknown
+      eval_count?: unknown
+      eval_duration?: unknown
+    }
     try {
       parsed = JSON.parse(trimmed)
     } catch {
@@ -328,6 +343,13 @@ async function chatOnce(
     if (content) {
       full += content
       onToken(content, full)
+    }
+    if (parsed.done === true && opts?.onDone) {
+      opts.onDone({
+        doneReason: typeof parsed.done_reason === 'string' ? parsed.done_reason : 'stop',
+        evalCount: typeof parsed.eval_count === 'number' ? parsed.eval_count : undefined,
+        evalDuration: typeof parsed.eval_duration === 'number' ? parsed.eval_duration : undefined,
+      })
     }
   }
 
@@ -378,6 +400,7 @@ export async function chatStream(
       opts?.think !== undefined &&
       /think/i.test(e.bodyText)
     ) {
+      thinkUnsupported.add(tag)
       try {
         return await chatOnce(tag, messages, onToken, opts, signal, false)
       } catch (retryError) {

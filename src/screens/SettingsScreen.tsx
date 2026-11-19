@@ -6,6 +6,13 @@ import { GlassCard, GlassButton, GlassInput, Chip, Tiger } from '../components/u
 import { useTheme, THEME_LABELS, type ThemeMode } from '../lib/theme'
 import { useSettings } from '../lib/settings'
 import { OCR_MODELS, writerById } from '../lib/models'
+import { useVoice, setTuning, describeVoice, type VoiceTunings } from '../lib/voice'
+
+const TUNING_SLIDERS: { key: keyof VoiceTunings; label: string }[] = [
+  { key: 'formality', label: 'Formality' },
+  { key: 'conciseness', label: 'Conciseness' },
+  { key: 'technicality', label: 'Technicality' },
+]
 
 const themeOptions: { mode: ThemeMode; label: string; icon: LucideIcon }[] = [
   { mode: 'light', label: THEME_LABELS.light, icon: Sun },
@@ -25,6 +32,8 @@ export const SettingsScreen: React.FC = () => {
   const { mode, setMode, isDark } = useTheme()
   const navigate = useNavigate()
   const settings = useSettings()
+  const voice = useVoice()
+  const voiceHints = describeVoice(voice)
   const [dbPath, setDbPath] = useState('/Users/michelneufeglise/.papertiger/data.db')
 
   const ocrModel = settings.ocrQuant ? OCR_MODELS[settings.ocrQuant] : null
@@ -143,8 +152,51 @@ export const SettingsScreen: React.FC = () => {
           </GlassCard>
         </motion.div>
 
-        {/* Memory */}
+        {/* Writing style */}
         <motion.div {...pop(3, 1)}>
+          <GlassCard className="p-6 space-y-5">
+            <Eyebrow>Writing style</Eyebrow>
+
+            {TUNING_SLIDERS.map(({ key, label }, idx) => {
+              const value = voice[key]
+              const pct = ((value - 1) / 9) * 100
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-3">
+                    <label htmlFor={`voice-${key}`} className="font-display text-[19px] text-fg">
+                      {label}
+                    </label>
+                    <Chip tone="tiger" mono>
+                      {value} / 10
+                    </Chip>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[11px] text-fg-faint">1</span>
+                    <input
+                      id={`voice-${key}`}
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={value}
+                      onChange={e => setTuning(key, parseInt(e.target.value, 10))}
+                      style={{ ['--range-fill' as string]: `${pct}%` }}
+                      className="flex-1"
+                    />
+                    <span className="font-mono text-[11px] text-fg-faint">10</span>
+                  </div>
+                  <p className="text-xs text-fg-muted mt-2">{voiceHints[idx]}</p>
+                </div>
+              )
+            })}
+
+            <p className="font-mono text-[11px] text-fg-faint">
+              The writer follows these when drafting sections.
+            </p>
+          </GlassCard>
+        </motion.div>
+
+        {/* Memory */}
+        <motion.div {...pop(4, -1)}>
           <GlassCard className="p-6 space-y-4">
             <Eyebrow>Memory</Eyebrow>
 
@@ -178,7 +230,7 @@ export const SettingsScreen: React.FC = () => {
         </motion.div>
 
         {/* About */}
-        <motion.div {...pop(4, -1)}>
+        <motion.div {...pop(5, 1)}>
           <GlassCard className="p-6 space-y-4">
             <div className="flex items-start justify-between gap-4">
               <Eyebrow>About</Eyebrow>

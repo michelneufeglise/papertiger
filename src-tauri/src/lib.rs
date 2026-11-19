@@ -59,6 +59,14 @@ fn read_file_base64(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn save_file_bytes(path: String, base64: String) -> Result<(), String> {
+  let bytes = base64::engine::general_purpose::STANDARD
+    .decode(base64.as_bytes())
+    .map_err(|e| e.to_string())?;
+  std::fs::write(&path, bytes).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn file_size(path: String) -> Result<u64, String> {
   let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
   Ok(metadata.len())
@@ -106,6 +114,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       hardware_info,
       read_file_base64,
+      save_file_bytes,
       file_size,
       load_app_data,
       save_app_data

@@ -2,6 +2,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useChat } from './chat'
 import { usePaper } from './paper'
 import { useSources } from './sourcesStore'
+import { useHumanize } from './humanizeStore'
 import type { Source } from './sources'
 
 /** Reading order of the 6x6 emotion sheet, then the 12 reading/writing poses. */
@@ -126,8 +127,9 @@ export const useTigerMood = useTigerStatus
 // Inputs to the derivation. Activities are set by the engine, flashes by anyone.
 type WritingAct = 'picking-up-pencil' | 'thinking-before-writing' | 'writing-intently' | 'scribbling-fast'
 type ReadingAct = 'opening-book' | 'focused-reading' | 'sleepy-reading'
-const act: { writing: WritingAct | null; chat: 'talking' | 'thinking' | null; reading: ReadingAct | null } = {
+const act: { writing: WritingAct | null; humanize: 'picking-up-pencil' | 'erasing-mistake' | null; chat: 'talking' | 'thinking' | null; reading: ReadingAct | null } = {
   writing: null,
+  humanize: null,
   chat: null,
   reading: null,
 }
@@ -157,6 +159,7 @@ const FLASH_PRIO: Partial<Record<TigerState, number>> = {
 
 function derive(): TigerState | null {
   if (act.writing) return act.writing
+  if (act.humanize) return act.humanize
   if (act.chat === 'talking') return 'talking'
   if (act.chat === 'thinking') return 'thinking'
   if (act.reading) {
@@ -250,7 +253,9 @@ export function useTigerStatusEngine(): void {
   const messages = useChat()
   const paper = usePaper()
   const sources = useSources()
-  const latest = useRef({ messages, paper, sources })
+  const humanize = useHumanize()
+  const latest = useRef({ messages, paper, sources, humanize })
+  const prevHumanize = useRef<Map<string, string> | null>(null)
   const interval = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const evalRef = useRef<() => void>(() => {})
   const tracks = useRef(new Map<string, WriteTrack>())
@@ -259,7 +264,7 @@ export function useTigerStatusEngine(): void {
   const prevSource = useRef(new Map<string, { status: string; page: number }>())
 
   const evaluate = () => {
-    const { messages, paper, sources } = latest.current
+    const { messages, paper, sources, humanize } = latest.current
     const now = Date.now()
 
     // Writing
@@ -337,7 +342,27 @@ export function useTigerStatusEngine(): void {
     if (anyRendering) reading = 'opening-book'
     else if (anyExtracting) reading = anySleepy ? 'sleepy-reading' : 'focused-reading'
 
+    // Humanize: pencil before the first token of a block, then the eraser while reworking.
+    const running = humanize.runningId ? humanize.jobs[humanize.runningId] : undefined
+    const hum: 'picking-up-pencil' | 'erasing-mistake' | null = running
+      ? running.draft.length === 0
+        ? 'picking-up-pencil'
+        : 'erasing-mistake'
+      : null
+    // Per-document flash when a job goes running -> done (nothing for cancelled or error).
+    const prevH = prevHumanize.current
+    const nextH = new Map(Object.values(humanize.jobs).map(j => [j.sourceId, j.status as string]))
+    if (prevH) {
+      for (const j of Object.values(humanize.jobs)) {
+        if (prevH.get(j.sourceId) === 'running' && j.status === 'done') {
+          flashTiger(j.flagged.length > 0 ? 'sad' : 'finished-page', 4000)
+        }
+      }
+    }
+    prevHumanize.current = nextH
+
     act.writing = writing
+    act.humanize = hum
     act.chat = chat
     act.reading = reading
     recompute()
@@ -354,9 +379,9 @@ export function useTigerStatusEngine(): void {
 
   useEffect(() => {
     evalRef.current = evaluate
-    latest.current = { messages, paper, sources }
+    latest.current = { messages, paper, sources, humanize }
     evalRef.current()
-  }, [messages, paper, sources])
+  }, [messages, paper, sources, humanize])
 
   useEffect(
     () => () => {

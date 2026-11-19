@@ -89,14 +89,19 @@ If a sprite file is missing, `tigerSrc` falls back to the closest emotion, then 
 | OCR page number advanced (flash 1.5 s) | `turning-page` |
 | A source finished (flash 4 s) | `amazed-reading` |
 | A source failed (flash 4 s) | `sad` |
+| Humanize running, no draft token yet for the block | `picking-up-pencil` |
+| Humanize running, drafting | `erasing-mistake` |
+| Humanize finished, nothing flagged (flash 4 s) | `finished-page` |
+| Humanize finished, some blocks flagged (flash 4 s) | `sad` |
 
 **Priority.** First match wins:
 1. active writing
-2. chat talking
-3. chat thinking
-4. active reading (a `turning-page` flash beats focused/sleepy reading, but not opening-book)
-5. flashes
-6. null, so the cycle shows.
+2. humanize running (`picking-up-pencil` until the block's first token, then `erasing-mistake`)
+3. chat talking
+4. chat thinking
+5. active reading (a `turning-page` flash beats focused/sleepy reading, but not opening-book)
+6. flashes
+7. null, so the cycle shows.
 
 **Flashes.** `flashTiger(state, ms)` can be called from anywhere.
 - Flash priority: errors (`erasing-mistake`, `sad`) are 3, completions (`finished-page`, `amazed-reading`) are 2, and `turning-page` is 1.
@@ -106,10 +111,10 @@ If a sprite file is missing, `tigerSrc` falls back to the closest emotion, then 
 **Hydration.** Sources and chat messages that already exist when the engine first runs never trigger anything: a restored error doesn't show sad, and the seeded chat thread ending in a user message doesn't pin `thinking`.
 
 **Where each pose is used.**
-- Engine-driven (`<Tiger cycle>`): header left corner (56px), Settings (64px), paper panel header (40px), Draft generating (48px).
+- Engine-driven (`<Tiger cycle>`): header left corner (56px), Settings (64px), paper panel header (40px), Draft generating (48px), Humanize result card while running (48px).
 - Sources rows (32px): `tigerForSource(source)`, which shows opening-book, focused-reading or sleepy-reading, sad on error, and nothing when done. The rows re-render every second only while something is extracting.
 - Sources drop zone (96px): `reading` on drag-over, `cuddly` with no sources, `taking-notes` when sources exist and none is running, `idle` while one runs.
-- Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Setup wizard one state per step, and on the Voice screen a state chosen from the retrain status.
+- Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Setup wizard one state per step, Humanize empty state `cuddly` (96px).
 
 **Night sticker.** In dark mode the tiger sits on a cream (`#fbf6ea`) disc with a `--line` border and 6% inset, so the graphite line work stays readable. Detected by watching the `dark` class on `<html>`.
 
@@ -132,6 +137,28 @@ The window is a rounded **desk**, and every column floats on it as its own card 
 - **Inner dividers:** full-width column dividers are dashed `--line-soft`, never a solid ink rule.
 - **Small elements:** cards and buttons still use the CSS `.sketch` / `.wobble` borders.
 
+## Humanize
+
+`src/screens/HumanizeScreen.tsx`, route `/humanize`, rail entry between Draft and Settings (`Wand2`). The paper panel is hidden here.
+- **Top to bottom:** intro, document picker, Tone grid (4), Strength grid (3, with hints), Manual review checkbox, Humanize / Cancel button, progress, preview grid, full result card.
+- **Collections:** the picker is a multi-select. Each done source is a sketch chip with a hand-drawn check box and a mono word count. "Select all · Clear" links sit beside the label, and a mono line shows "3 selected · 1,240 words". Selection is locked while a batch runs. The button reads "Humanize" for one document and "Humanize N documents" for several; the documents run one after another.
+- **Manual review:** a sketch checkbox (real hidden input, wobbly box, hand-drawn tick, blush focus ring) labelled "Manual review — check every change before using it". When on, finished cards get a **Review** button.
+- **Progress:** pencil-hatch `Stripe`, mono "Document k of N · block i/M · elapsed · tok/s" (or "preparing…"), and a thin bar (shimmer while preparing).
+- **Preview grid:** `grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4`, one page-like card per selected source (`.sketch-alt`, tilt of -0.6 / +0.6 degrees alternating, a blush tape strip), plus older jobs that are not selected, dimmed.
+  - Header: title, word count and a status badge (Queued, Humanizing i/M with a hatch strip, Done, "n kept" when the guard held blocks back, Cancelled, Error).
+  - Body: about 8 lines with a bottom fade. It shows the original before a run, the live draft while running, and the effective result when done ("n of M blocks changed").
+  - Actions once finished: Copy, .docx and, with Manual review on, Review ("n reviewed" once decisions exist).
+  - Clicking the card body makes it active (blush outline). The active card is the running one, else the first done one.
+- **Result:** a `GlassCard` for the active document, rendered from `toView` with the effective outputs (rewrites with review decisions applied). Rewritten blocks get a blush left border, the block being written shows its live draft in muted italics. Copy (markdown), Download .docx and Clear appear once it has ended. Blocks the quality check rejected are listed in a note below.
+- **Review portal** (`src/components/humanize/ReviewPortal.tsx`): a `createPortal` sheet on the Modal backdrop (`w-[92vw] h-[88vh] max-w-[1200px]`, `.sketch`), with `role="dialog"`, `aria-modal`, Esc and X to close, focus moved to the sheet and returned to the Review button. Reduced motion drops the spring.
+  - Header: "Review · title", counts "n changed · n reverted · n edited · n kept by the guard", Keep all, Revert all and a "Show unchanged blocks" toggle (off; adds dimmed read-only context such as headings).
+  - Body: sticky "Original | Humanized" column heads, then one row per changed or guard-flagged block, in document order.
+  - Diff colours: deleted words on the left are struck through in `--danger` (2px line, on a faint red tint); inserted words on the right sit on a blush `--rose` highlight.
+  - Row footer: a decision chip (Rewrite kept, Reverted, Edited, Kept by guard) and Keep, Revert, Edit. Edit swaps the right column for an auto-growing textarea with Save and Cancel.
+  - Flagged rows list the guard issues in muted mono; a refused rewrite is shown diffed against the original under "Rejected rewrite", with **Use rewrite anyway**.
+  - Decisions apply live, and the portal works while other documents are still running.
+- Without a writer model the run button is replaced by a note linking to `/setup?step=writer`.
+
 ## Header
 
 `src/components/ui/TitleBar.tsx` is 72px tall: a paper background with a 2px ink bottom stroke, and the whole bar is a Tauri drag region.
@@ -145,7 +172,7 @@ The window is a rounded **desk**, and every column floats on it as its own card 
 - **Traffic lights:** the window has `decorations: false`, so no macOS traffic lights are expected in the corner. If they ever appear, raise `LEFT_INSET_PX` to about 80.
 - **Wordmark:**
   - It comes from `design/title_paper_tiger.jpeg` through `design/tools/make_wordmark.py`, which flattens the paper, turns ink darkness into alpha, trims, and saves at 96px tall.
-  - The output is `src/assets/wordmark-paper-tiger.png` (358×96, `WORDMARK_RATIO` 3.729).
+  - The output is `src/assets/wordmark-paper-tiger.png` (324×96, `WORDMARK_RATIO` 3.375; the word gap is closed so it reads "PaperTiger").
   - It renders as a CSS `mask-image` filled with `var(--fg)`, so it is graphite on Sketchbook and chalk on Night.
   - To regenerate it, run `/opt/homebrew/bin/python3 design/tools/make_wordmark.py`.
 - **Rail:** the rail no longer carries a logo.

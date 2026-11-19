@@ -7,8 +7,8 @@ import wordmarkUrl from '../../assets/wordmark-paper-tiger.png'
 // The window has decorations:false, so there are no macOS traffic lights.
 // If they ever appear, raise this (about 80px) to clear them.
 const LEFT_INSET_PX = 16
-// Aspect ratio (w/h) of src/assets/wordmark-paper-tiger.png (358x96).
-const WORDMARK_RATIO = 358 / 96
+// Aspect ratio (w/h) of src/assets/wordmark-paper-tiger.png (324x96, one word "PaperTiger").
+const WORDMARK_RATIO = 324 / 96
 const WORDMARK_H = 40
 
 export interface TitleBarProps {

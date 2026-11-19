@@ -276,6 +276,49 @@ describing what was planned and what was implemented.
   - Mock Stop leaves the section editable, and the header tiger returns to the cycle with no finished-page.
 - **Test note:** after Vite hot updates, `await import('/src/lib/paper.ts')` in the console gets a separate, stale store; the app uses `paper.ts?t=…`. Check through the DOM, or reload first.
 
+### 2026-11-20 — Humanize replaces Voice (Opus plan, Sonnet build)
+- **Rail:** Voice is gone, and **Humanize** (`/humanize`, Wand2) sits between Draft and Settings. The paper panel is hidden on Humanize.
+- **Voice sliders:** formality, conciseness and technicality moved into a "Writing style" card in Settings, and the writer still uses them. `StyleScreen.tsx` and `mock/styleMetrics.ts` were removed.
+- **Engine (`src/lib/humanize/`):** a 1:1 TypeScript port of Persephone's `server/humanize.py`.
+  - Block segmentation and classify: headings, table headers, captions, labels and questions are kept. In "Question? answer" and "Label: text" blocks only the answer part is rewritten.
+  - The EN/NL prompts are verbatim. A throwaway parity test matched all 96 prompt variants and the guard cases against the Python source.
+  - Language detection, `cleanOutput`, the quality guard (one retry at 0.2, then keep and flag), `num_predict` per block, `num_ctx` as a power of two in 8K–32K, and up to 3 continuations.
+  - Papertiger additions:
+    - OCR `a | b` row tables are recognised.
+    - HTML `<table>` blocks: those with rows become cells, those without are kept verbatim. The Q4 OCR model can emit `<table>` with no `<tr>`.
+  - 39 vitest tests (`npm test`).
+- **Store and UI:** `humanizeStore.ts` and `HumanizeScreen.tsx`.
+  - Pick a done source, then Tone (4) and Strength (3), then Humanize / Cancel.
+  - While running: "block k/M · elapsed · tok/s" and a live draft in italics.
+  - Afterwards: a flagged-blocks note, Copy (markdown), Download .docx (the `docx` package builds a fresh document; Tauri saves through the dialog plus a new Rust `save_file_bytes` command), and Clear.
+  - The model is the configured writer.
+- **Tiger:** humanize is `picking-up-pencil` before the first token of a block, then `erasing-mistake`. A finished run flashes `finished-page`, or `sad` if any block was flagged. Cancel flashes nothing.
+- **Verified in the browser with real OCR and qwen3 4B:**
+  - Runs go through block k/M. Cancel mid-run keeps the partial result.
+  - The .docx is a valid file (17 parts) and renders in Quick Look.
+  - The Settings sliders persist across a reload.
+  - Screenshots: `docs/ux-v3-humanize.png`, `docs/ux-v3-humanize-running.png` and `docs/ux-v3-settings-writing-style.png`.
+- **Quality note:** qwen3 4B often drops citations like `[1, 2]` or writes "6 to 12" for "6-12". The guard then keeps those blocks original and flags them; 2 of 3 blocks on the sample page. A larger writer passes more often (Persephone recommends gemma4).
+- **Not verified:** the Tauri save dialog for .docx (computer use can't reach the dev binary). Tauri dev was restarted with the new command.
+- **Test note:** both the rail item and the run button are labelled "Humanize", so pick the run button explicitly when scripting.
+
 <!-- Add new entries above this line, newest last. -->
 
 
+
+### 2026-11-20 — Humanize collections and manual review; one-word wordmark (Opus plan, Sonnet build)
+- **Collections:** Humanize takes several documents at once.
+  - The source chips are multi-select (Select all / Clear, "n selected · N words").
+  - A preview grid shows one taped card per document: Queued / Humanizing k/M / Done / n kept / Cancelled / Error, with the first lines and Copy / .docx per card. Clicking a card shows its full result below.
+  - Documents run one after another; the status line reads "Document k of N · block i/M · elapsed · tok/s". Cancel stops the running one and marks the queued ones cancelled; finished ones stay.
+- **Store:** `src/lib/humanizeStore.ts` is now a batch (`jobs`, `order`, `runningId`, `DocJob` per source). `effectiveOutputs(job)` applies review decisions and feeds the previews, the full result, Copy and .docx. `run.ts` now also reports the guard-rejected rewrite of a flagged block.
+- **Manual review:** a "Manual review" checkbox adds a Review button to finished cards. `src/components/humanize/ReviewPortal.tsx` shows each rewritten or flagged block side by side (original with struck `--danger` deletions, rewrite with blush insertions, word diff from `src/lib/humanize/diff.ts` on jsdiff). Per block: Keep, Revert, Edit, and "Use rewrite anyway" for guard-kept blocks. Keep all / Revert all, and an optional "Show unchanged blocks".
+- **Wordmark:** `make_wordmark.py` closes the word gap and overlaps the halves (`GAP_OVERLAP` 0.14, alpha max), so the header reads "PaperTiger". The PNG is 324×96, `WORDMARK_RATIO` 324/96.
+- **Verified in the browser against local Ollama (qwen3 4B):**
+  - `npm test` (43), `npm run build` and `npm run lint` are clean.
+  - Two documents ran in sequence; Cancel during document 2 kept document 1 done and marked document 2 cancelled.
+  - Review: "Use rewrite anyway", Edit + Save and Revert all changed the counts; Copy and the .docx (`word/document.xml` decoded) contained the edited text and the reverted original.
+  - The wordmark in the header in Sketchbook and Night.
+  - Screenshots: `docs/ux-v3-humanize-collection.png`, `docs/ux-v3-humanize-review.png`.
+- **Known rough edges:** after review, the card badge ("2 kept") and the "n blocks kept as in the original" note still count the guard's flags, not the decisions; a guard note ("missing: 6-12") stays on a block after you edit it. The portal has no exit animation. An OCR `<table>` without cells still shows as raw markup in the result view.
+- **Not verified:** the Tauri window (save dialog, look of the portal at full width).

@@ -1,14 +1,14 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
-import { MessageSquare, FolderOpen, PenLine, AudioWaveform, SlidersHorizontal } from 'lucide-react'
+import { MessageSquare, FolderOpen, PenLine, Wand2, SlidersHorizontal } from 'lucide-react'
 
 import { TitleBar, Sidebar, SidebarItem, SketchFrame } from './components/ui'
 import { PaperPanel } from './components/PaperPanel'
 import { ChatScreen } from './screens/ChatScreen'
 import { ReferencesScreen } from './screens/ReferencesScreen'
 import { EditorScreen } from './screens/EditorScreen'
-import { StyleScreen } from './screens/StyleScreen'
+import { HumanizeScreen } from './screens/HumanizeScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { SetupWizard } from './screens/SetupWizard'
 import { needsSetup } from './lib/setup'
@@ -18,11 +18,11 @@ const routes = [
   { path: '/', name: 'Chat', icon: MessageSquare, screen: ChatScreen },
   { path: '/references', name: 'Sources', icon: FolderOpen, screen: ReferencesScreen },
   { path: '/editor', name: 'Draft', icon: PenLine, screen: EditorScreen },
-  { path: '/style', name: 'Voice', icon: AudioWaveform, screen: StyleScreen },
+  { path: '/humanize', name: 'Humanize', icon: Wand2, screen: HumanizeScreen },
   { path: '/settings', name: 'Settings', icon: SlidersHorizontal, screen: SettingsScreen },
 ]
 
-const PAPER_PANEL_PATHS = new Set(['/', '/references', '/style'])
+const PAPER_PANEL_PATHS = new Set(['/', '/references'])
 
 /** Mounts the tiger status engine once, inside the router, on every screen. */
 const TigerEngine: React.FC = () => {

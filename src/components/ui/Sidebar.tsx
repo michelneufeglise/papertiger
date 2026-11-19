@@ -2,7 +2,6 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import clsx from 'clsx'
-import { Tiger } from './Tiger'
 
 export interface SidebarItemProps {
   icon: LucideIcon
@@ -66,12 +65,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ children, className }) => {
   return (
     <aside
       className={clsx(
-        'w-[84px] shrink-0 h-full flex flex-col items-center gap-1 py-3 px-1.5',
+        'w-[84px] shrink-0 h-full flex flex-col items-center gap-1 pt-2 pb-3 px-1.5',
         'bg-panel border-r-2 border-[var(--line)] overflow-y-auto',
         className
       )}
     >
-      <Tiger cycle size={56} className="mb-2" alt="papertiger" />
       {children}
     </aside>
   )

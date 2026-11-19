@@ -194,6 +194,30 @@ describing what was planned and what was implemented.
 - Regenerate the icon with `/opt/homebrew/bin/python3 design/tools/make_app_icon.py [preview.png]`, then run `npx tauri icon design/app-icon.png`.
 - Verified: preview checked at 1024, 128, 64, 32 and 16 px on light and dark; `npm run build` is clean; `tauri dev` relaunched with the fresh binary. The Dock was not checked by eye.
 
+### 2026-11-19 — Taller header with "Paper Tiger" wordmark (Opus plan, Sonnet build)
+- Merged `main` (the user's push of `design/title_paper_tiger.jpeg` and two Gemini sheets) into the branch as `27de453`.
+- **Header** (`src/components/ui/TitleBar.tsx`):
+  - 44px is now **72px**.
+  - The cycling tiger moved from the rail into the header's left corner (56px, 16px inset).
+  - After it come the brush-ink wordmark (about 40px tall, a CSS mask filled with `--fg`, so it goes chalk on Night), a hand-drawn slash, and the muted page name.
+  - The pill lost its small tiger.
+  - The rail (`Sidebar.tsx`) no longer has a logo.
+- **Wordmark:** `design/tools/make_wordmark.py` (dev-only) produces `src/assets/wordmark-paper-tiger.png` (358×96, 16 KB).
+- **Verified:**
+  - `npm run build` and `npm run lint` are clean.
+  - In the browser, the header measures 72px, the tiger sits at x=16, and the wordmark is clean in Sketchbook and Night.
+  - Screenshots are `docs/ux-v3-header.png` and `docs/ux-v3-header-night.png`.
+- **Not verified:** the Tauri window, where macOS traffic lights could overlap the corner tiger. The unbundled dev binary can't be reached by computer use. If lights show, set `LEFT_INSET_PX` to about 80.
+- **Not used yet:** the "Tiger Reading & Writing" sheet (`design/Gemini_Generated_Image_akn2m6akn2m6akn2.jpeg`, 12 poses).
+
+### 2026-11-19 — Window dragging fixed (Opus plan, Sonnet build)
+- **Cause:** the frameless window can only be moved through `data-tauri-drag-region`, which calls `start_dragging`. That command is not part of `core:default`, so every drag was silently denied.
+- **Fix:**
+  - `src-tauri/capabilities/default.json` now also grants `core:window:allow-start-dragging` and `core:window:allow-internal-toggle-maximize` (double-click the header to zoom).
+  - The header's right-hand wrapper now also carries `data-tauri-drag-region`. Tauri only drags when the mousedown target itself has the attribute; the left group is `pointer-events-none`.
+- **Rule:** any new window command used from the frontend (minimize, close, set size…) needs its own `core:window:allow-*` permission in the capability file.
+- **Verified:** `npm run build` and `cargo check` are clean; the relaunched dev binary contains the permission. The drag itself still needs a hand test, because computer use can't reach the unbundled dev binary.
+
 <!-- Add new entries above this line, newest last. -->
 
 

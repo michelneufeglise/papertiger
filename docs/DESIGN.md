@@ -68,10 +68,28 @@ Code: `src/lib/tiger.ts` (state, cycle, mood) and `src/components/ui/Tiger.tsx`.
 6. otherwise none, so the cycle shows.
 
 **Where each pose is used.**
-- Cycling: rail logo (56px), title bar (24px), Settings (64px), paper panel header when not writing (40px).
+- Cycling: header left corner (56px), Settings (64px), paper panel header when not writing (40px).
 - Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Draft generating `busy` (48px), paper panel header while writing `writing`, Sources drop zone `reading` on drag-over / `cuddly` when empty / `idle` otherwise (96px), Sources rows `reading` while extracting and `sad` on error (32px), Setup wizard one state per step, Voice screen a state chosen from the retrain status.
 
 **Night sticker.** In dark mode the tiger sits on a cream (`#fbf6ea`) disc with a `--line` border and 6% inset, so the graphite line work stays readable. Detected by watching the `dark` class on `<html>`.
+
+## Header
+
+`src/components/ui/TitleBar.tsx` is 72px tall: a paper background with a 2px ink bottom stroke, and the whole bar is a Tauri drag region.
+- **Left to right:**
+  1. the cycling `<Tiger cycle size={56}/>` at a 16px inset (`LEFT_INSET_PX`);
+  2. the brush-ink **"Paper Tiger" wordmark**, about 40px tall;
+  3. a hand-drawn slash;
+  4. the page name in `font-display` at 18px, muted.
+- **Right side:** the "100% on-device" pill.
+- **Dragging:** the tiger, wordmark, slash and title are `pointer-events-none`, so dragging over them still moves the window.
+- **Traffic lights:** the window has `decorations: false`, so no macOS traffic lights are expected in the corner. If they ever appear, raise `LEFT_INSET_PX` to about 80.
+- **Wordmark:**
+  - It comes from `design/title_paper_tiger.jpeg` through `design/tools/make_wordmark.py`, which flattens the paper, turns ink darkness into alpha, trims, and saves at 96px tall.
+  - The output is `src/assets/wordmark-paper-tiger.png` (358×96, `WORDMARK_RATIO` 3.729).
+  - It renders as a CSS `mask-image` filled with `var(--fg)`, so it is graphite on Sketchbook and chalk on Night.
+  - To regenerate it, run `/opt/homebrew/bin/python3 design/tools/make_wordmark.py`.
+- **Rail:** the rail no longer carries a logo.
 
 ## Paper panel
 

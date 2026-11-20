@@ -224,3 +224,12 @@ export function checkBlock(srcIn: string, outIn: string, o: CheckOptions = {}): 
   }
   return issues
 }
+
+/** Problems with a user's edit of a block. Edits are never flagged for length. */
+export function checkEdit(
+  original: string,
+  edited: string,
+  o: { strength?: string; lang?: string; names?: ReadonlySet<string> } = {},
+): string[] {
+  return checkBlock(original, edited, { intensity: o.strength, lang: o.lang, names: o.names, ratio: [0, Infinity] })
+}

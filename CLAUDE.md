@@ -335,3 +335,37 @@ describing what was planned and what was implemented.
   - Edit the other: 0, with Reviewed and no note;
   - Keep the first again: back to 1 kept.
 - Build, lint and the 43 tests are clean.
+
+### 2026-11-20 — Review guard note follows the current text (Opus plan, Sonnet build)
+- **Change:** the review portal's per-block guard note now describes the text the block will use, not the rejected rewrite.
+  - Reverted blocks show no note.
+  - Edited blocks are re-checked with the new `checkEdit` in `guard.ts`. That is `checkBlock` with no length bounds, so facts, quotes and repeats are still checked. The note shows "Still missing: …" in `--danger`, or nothing if the edit passes. This also covers edits of ordinary rewrites.
+  - Blocks with no decision keep the guard's original note.
+- `DocJob.strength` records the strength the document ran with, for the re-check.
+- **Verified in the browser** with real qwen3 4B on `sample-page-2`:
+  - Revert clears the "missing: 6-12" note.
+  - An edit without "(RRT)" shows "Still missing: RRT", and restoring it clears the note.
+  - "Use rewrite anyway" shows "Still missing: 6-12".
+- **Checks:** 46 tests, build and lint are clean.
+- **Note:** the guard matches 1–2 digit numbers as standalone digits, so "[1, 2]" counts as present when "6-12" is in the text. That is inherited from Persephone and left as is.
+
+### 2026-11-20 — Humanize: open and save every common document format (Opus plan, Sonnet build)
+- **Input** (`src/lib/extract/`): docx (mammoth → HTML), rtf, odt, epub (spine order), pages (IWA snappy + protobuf, preview.jpg OCR fallback), html, txt and md all become light markdown for the segmenter. doc, webarchive and wordml go through the new Rust `convert_with_textutil` (`/usr/bin/textutil`, app only; in the browser they say "Open this file in the app"). HEIC images are OCR'd.
+- **Sources:** `SourceKind` 'document'. Text-native files skip the OCR queue and need no OCR model.
+- **Add documents:** `src/lib/addFiles.ts` (`pickFiles`, `addFiles`, `useFileDrop`) is shared by Sources and a new Add documents button and drop zone on Humanize. New files are auto-selected once done.
+- **Download** (`src/lib/humanize/export/`, `DownloadMenu`): docx, pdf (pdf-lib), rtf (`\uN\'3f` escapes), odt, html, md and txt. doc goes through the Rust `save_with_textutil` (app only). The last format used is remembered in `papertiger.humanizeExport`. Pages can't be written; the menu notes "Pages opens .docx".
+- **Also:**
+  - cards show the file type ("56 words · .md") and previews without markdown marks;
+  - result lists use • bullets;
+  - `startBatch` only runs done sources with text, and prunes stale selections.
+- **Verified:**
+  - In the browser, through a synthetic drop: all browser-readable formats extract, headings survive where the file has real heading styles, and files are auto-selected. .doc shows the in-app message.
+  - Downloads: all 7 browser formats saved. The RTF and ODT read back correctly with `textutil` (accents, curly quotes, emoji). The PDF text was checked with pdf.js.
+  - The `textutil` doc read and write commands, run as the Rust code calls them, keep the text intact.
+  - 81 tests, build, lint and `cargo check` are clean.
+  - Screenshots: `docs/ux-v3-humanize-add.png`, `docs/ux-v3-humanize-download.png`.
+- **Not verified:**
+  - the Pages parser against a real Pages file (only a synthetic IWA);
+  - .doc in the Tauri window;
+  - the native save dialogs and Finder drag-drop.
+- **Test note:** `\u` sequences typed into Bash tool commands are decoded before they reach the shell. Move RTF samples as base64.

@@ -1,15 +1,19 @@
 import { invoke } from '@tauri-apps/api/core'
 import * as pdfjsLib from 'pdfjs-dist'
-import mammoth from 'mammoth'
 import { isTauri } from './tauri'
 import { ocrImage, OllamaError } from './ollama'
+import { readSettings } from './settings'
+import { OCR_EXTENSIONS, TEXT_EXTENSIONS, extensionOf, extractDocument } from './extract'
+
+const ALL_TEXT = new Set<string>(TEXT_EXTENSIONS)
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
 ).toString()
 
-export type SourceKind = 'pdf' | 'image' | 'docx'
+/** 'docx' is kept for persisted data; 'document' is any other text-native format (no OCR). */
+export type SourceKind = 'pdf' | 'image' | 'docx' | 'document'
 export type SourceStatus = 'queued' | 'rendering' | 'extracting' | 'done' | 'error'
 
 export interface SourcePage {
@@ -29,22 +33,23 @@ export interface Source {
   pages: number
   text: string
   error?: string
+  /** A non-fatal remark about how the text was read, e.g. "only the first page". */
+  note?: string
   /** The Tauri filesystem path this source was added from, when applicable (browser file inputs have none). */
   path?: string
 }
 
 export type SourceInput = { path: string } | { file: File }
 
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'bmp'])
+const IMAGE_EXTENSIONS = new Set<string>(OCR_EXTENSIONS.filter(ext => ext !== 'pdf'))
 
 export function kindFromName(name: string): SourceKind | null {
-  const dotIndex = name.lastIndexOf('.')
-  if (dotIndex < 0) return null
-  const ext = name.slice(dotIndex + 1).toLowerCase()
+  const ext = extensionOf(name)
+  if (!ext) return null
   if (ext === 'pdf') return 'pdf'
   if (ext === 'docx') return 'docx'
   if (IMAGE_EXTENSIONS.has(ext)) return 'image'
-  return null
+  return ALL_TEXT.has(ext) ? 'document' : null
 }
 
 function mimeFromName(name: string): string {
@@ -59,7 +64,10 @@ function mimeFromName(name: string): string {
     case 'gif':
       return 'image/gif'
     case 'tiff':
+    case 'tif':
       return 'image/tiff'
+    case 'heic':
+      return 'image/heic'
     case 'bmp':
       return 'image/bmp'
     default:
@@ -142,11 +150,6 @@ export async function imageToPng(bytes: Uint8Array, mime: string): Promise<Sourc
   return { index: 0, pngBase64: stripPngPrefix(canvas.toDataURL('image/png')) }
 }
 
-export async function docxToText(bytes: Uint8Array): Promise<string> {
-  const result = await mammoth.extractRawText({ arrayBuffer: toArrayBuffer(bytes) })
-  return result.value
-}
-
 export async function processSource(
   input: SourceInput,
   ocrTag: string,
@@ -162,11 +165,25 @@ export async function processSource(
     }
     if (signal?.aborted) return
 
-    if (kind === 'docx') {
+    if (kind === 'docx' || kind === 'document') {
       onUpdate({ status: 'extracting', progress: { page: 0, pages: 1 } })
-      const text = await docxToText(bytes)
+      const result = await extractDocument(name, bytes, 'path' in input ? input.path : undefined, {
+        ocrJpeg: async jpeg => {
+          // Pages preview fallback: needs the OCR model.
+          const tag = readSettings().ocrTag
+          if (!tag) throw new Error('Pick an OCR model to read this Pages file.')
+          const page = await imageToPng(jpeg, 'image/jpeg')
+          return (await ocrImage(tag, page.pngBase64, signal)).text
+        },
+      })
       if (signal?.aborted) return
-      onUpdate({ status: 'done', pages: 1, progress: { page: 1, pages: 1 }, text })
+      onUpdate({
+        status: 'done',
+        pages: 1,
+        progress: { page: 1, pages: 1 },
+        text: result.text,
+        note: result.note,
+      })
       return
     }
 

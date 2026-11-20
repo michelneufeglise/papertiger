@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkBlock, cleanOutput, documentNames, keyTerms, protectedTokens, quotedSpans, restoreQuotes } from './guard'
+import { checkBlock, checkEdit, cleanOutput, documentNames, keyTerms, protectedTokens, quotedSpans, restoreQuotes } from './guard'
 import { makeBlock } from './segment'
 
 const SRC =
@@ -66,5 +66,26 @@ describe('cleanOutput', () => {
     expect(cleanOutput('Critici noemen het „knap“ genoeg voor een lange zin.', b)).toBe(
       'Critici noemen het “knap” genoeg voor een lange zin.',
     )
+  })
+})
+
+describe('checkEdit', () => {
+  const ORIG =
+    'Studies of the wetland reported a range of 6-12 species per plot [14, 27]. Researchers noted that sampling effort varied between seasons.'
+
+  it('passes an edit that restores the protected facts', () => {
+    const edited =
+      'Wetland studies reported 6-12 species per plot [14, 27], and researchers noted that sampling effort varied between seasons.'
+    expect(checkEdit(ORIG, edited, { lang: 'en' })).toEqual([])
+  })
+
+  it('reports a dropped citation', () => {
+    const edited = 'Wetland studies reported 6-12 species per plot, and researchers noted that sampling effort varied between seasons.'
+    expect(checkEdit(ORIG, edited, { lang: 'en' }).some(i => i.startsWith('missing:'))).toBe(true)
+  })
+
+  it('never flags length', () => {
+    const edited = 'Wetland studies reported 6-12 species [14, 27]; sampling effort varied.'
+    expect(checkEdit(ORIG, edited, { lang: 'en' }).some(i => i.startsWith('length'))).toBe(false)
   })
 })

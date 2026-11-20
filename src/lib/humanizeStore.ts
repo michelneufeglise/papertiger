@@ -39,6 +39,7 @@ export interface DocJob {
   flagged: FlaggedBlock[]
   model: string | null
   language: string | null
+  strength: Strength
   startedAt: number | null
   /** Set when the job ends (done / cancelled / error). */
   finishedAt: number | null
@@ -269,6 +270,7 @@ function newJob(sourceId: string, title: string, status: JobStatus): DocJob {
     flagged: [],
     model: null,
     language: null,
+    strength: state.strength,
     startedAt: null,
     finishedAt: null,
     tokPerSec: 0,
@@ -367,7 +369,10 @@ async function runJob(b: Batch, id: string, model: string): Promise<void> {
  */
 export async function startBatch(): Promise<void> {
   if (batch) return
-  const ids = state.selected.slice()
+  // Same rule as the screen's doneSources: the source exists, is done and has text.
+  const usable = new Set(getSources().filter((s) => s.status === 'done' && s.text.trim()).map((s) => s.id))
+  const ids = state.selected.filter((id) => usable.has(id))
+  if (ids.length !== state.selected.length) setState({ selected: ids })
   if (ids.length === 0) return
   const model = readSettings().writerTag
   if (!model) {

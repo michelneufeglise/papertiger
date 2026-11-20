@@ -1,25 +1,21 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Upload, Trash2, Eye } from 'lucide-react'
-import { invoke } from '@tauri-apps/api/core'
-import { open as openFileDialog } from '@tauri-apps/plugin-dialog'
-import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { tigerForSource } from '../lib/tiger'
 import { GlassCard, GlassButton, StatusChip, Stripe, Modal, Chip, Tiger } from '../components/ui'
-import { kindFromName, type Source, type SourceInput, type SourceKind } from '../lib/sources'
-import { useSources, addSource, enqueue, cancel, removeSource } from '../lib/sourcesStore'
+import type { Source } from '../lib/sources'
+import { useSources, cancel, removeSource } from '../lib/sourcesStore'
+import { addFiles, pickFiles, useFileDrop } from '../lib/addFiles'
 import { useSettings } from '../lib/settings'
-import { isTauri } from '../lib/tauri'
 
-const typeLabel: Record<SourceKind, string> = {
-  pdf: 'PDF',
-  docx: 'DOCX',
-  image: 'IMG',
+function typeLabel(source: Pick<Source, 'kind' | 'name'>): string {
+  if (source.kind === 'pdf') return 'PDF'
+  if (source.kind === 'image') return 'IMG'
+  if (source.kind === 'docx') return 'DOCX'
+  const dot = source.name.lastIndexOf('.')
+  return (dot < 0 ? 'DOC' : source.name.slice(dot + 1)).toUpperCase().slice(0, 5)
 }
-
-const FILE_DIALOG_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'bmp', 'docx']
-const FILE_INPUT_ACCEPT = FILE_DIALOG_EXTENSIONS.map((ext) => `.${ext}`).join(',')
 
 /** Small mono "7d ago" style relative-time helper. */
 function formatRelativeTime(date: Date): string {
@@ -86,13 +82,10 @@ export const ReferencesScreen: React.FC = () => {
     return () => clearInterval(id)
   }, [anyExtracting])
   const rowTiger = (s: Source) => tigerForSource(s)
-  const [isDragOver, setIsDragOver] = useState(false)
   const [skipNotices, setSkipNotices] = useState<SkipNotice[]>([])
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [copied, setCopied] = useState(false)
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const addSkipNotice = useCallback((name: string) => {
     const id = crypto.randomUUID()
@@ -102,46 +95,13 @@ export const ReferencesScreen: React.FC = () => {
     }, 4000)
   }, [])
 
-  const addFiles = useCallback(
-    async (inputs: SourceInput[]) => {
-      for (const input of inputs) {
-        const name = 'file' in input ? input.file.name : (input.path.split(/[\\/]/).pop() ?? input.path)
-        const kind = kindFromName(name)
-        if (!kind) {
-          addSkipNotice(name)
-          continue
-        }
-
-        let sizeBytes = 0
-        if ('file' in input) {
-          sizeBytes = input.file.size
-        } else {
-          try {
-            sizeBytes = await invoke<number>('file_size', { path: input.path })
-          } catch {
-            sizeBytes = 0
-          }
-        }
-
-        const id = crypto.randomUUID()
-        const source: Source = {
-          id,
-          name,
-          kind,
-          sizeBytes,
-          addedAt: new Date(),
-          status: 'queued',
-          progress: { page: 0, pages: 0 },
-          pages: 0,
-          text: '',
-          path: 'path' in input ? input.path : undefined,
-        }
-        addSource(source)
-        enqueue(id, input)
-      }
+  const handleInputs = useCallback(
+    (inputs: Parameters<typeof addFiles>[0]) => {
+      void addFiles(inputs, addSkipNotice)
     },
     [addSkipNotice],
   )
+  const { isDragOver, dropProps } = useFileDrop(handleInputs)
 
   const handleRemove = useCallback((id: string) => {
     cancel(id)
@@ -154,78 +114,9 @@ export const ReferencesScreen: React.FC = () => {
     setCopied(false)
   }, [])
 
-  // --- Choose files ---------------------------------------------------
-
   const handleChooseFiles = useCallback(async () => {
-    if (isTauri()) {
-      const selected = await openFileDialog({
-        multiple: true,
-        filters: [{ name: 'Documents', extensions: FILE_DIALOG_EXTENSIONS }],
-      })
-      if (!selected) return
-      const paths = Array.isArray(selected) ? selected : [selected]
-      await addFiles(paths.map((path) => ({ path })))
-      return
-    }
-    fileInputRef.current?.click()
-  }, [addFiles])
-
-  const handleFileInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files
-      if (files && files.length > 0) {
-        void addFiles(Array.from(files).map((file) => ({ file })))
-      }
-      e.target.value = ''
-    },
-    [addFiles],
-  )
-
-  // --- Drag and drop ----------------------------------------------------
-
-  useEffect(() => {
-    if (!isTauri()) return
-
-    let unlisten: (() => void) | undefined
-    getCurrentWebview()
-      .onDragDropEvent((event) => {
-        const payload = event.payload
-        if (payload.type === 'enter' || payload.type === 'over') {
-          setIsDragOver(true)
-        } else if (payload.type === 'drop') {
-          setIsDragOver(false)
-          void addFiles(payload.paths.map((path) => ({ path })))
-        } else if (payload.type === 'leave') {
-          setIsDragOver(false)
-        }
-      })
-      .then((fn) => {
-        unlisten = fn
-      })
-
-    return () => unlisten?.()
-  }, [addFiles])
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    if (isTauri()) return
-    setIsDragOver(true)
-  }
-
-  const handleDragLeave = () => {
-    if (isTauri()) return
-    setIsDragOver(false)
-  }
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    if (isTauri()) return
-    setIsDragOver(false)
-    const files = e.dataTransfer.files
-    if (files && files.length > 0) {
-      void addFiles(Array.from(files).map((file) => ({ file })))
-    }
-  }
+    handleInputs(await pickFiles())
+  }, [handleInputs])
 
   // --- Preview modal ------------------------------------------------
 
@@ -272,7 +163,7 @@ export const ReferencesScreen: React.FC = () => {
               <div className="flex flex-col gap-2">
                 {skipNotices.map((notice) => (
                   <Chip key={notice.id} tone="rose">
-                    Skipped {notice.name}: not a PDF, image or DOCX
+                    Skipped {notice.name}: not a supported document type
                   </Chip>
                 ))}
               </div>
@@ -281,9 +172,7 @@ export const ReferencesScreen: React.FC = () => {
 
           {/* Drop zone */}
           <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            {...dropProps}
             className={`wobble relative overflow-hidden border-2 border-dashed py-8 px-6 transition-colors duration-150 ${
               isDragOver ? 'border-[var(--line)] bg-rose/40' : 'border-[var(--line)] bg-transparent'
             }`}
@@ -321,20 +210,12 @@ export const ReferencesScreen: React.FC = () => {
                 />
               </motion.div>
               <p className="text-center font-display text-[22px] text-fg">
-                {isDragOver ? 'Drop it, I will read it!' : 'Drop PDFs, DOCX or images'}
+                {isDragOver ? 'Drop it, I will read it!' : 'Drop documents or images'}
               </p>
               <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-faint">or</p>
               <GlassButton onClick={handleChooseFiles} variant="secondary" size="sm" icon={<Upload size={16} />}>
                 Choose files
               </GlassButton>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept={FILE_INPUT_ACCEPT}
-                onChange={handleFileInputChange}
-                className="hidden"
-              />
             </div>
           </div>
 
@@ -356,7 +237,7 @@ export const ReferencesScreen: React.FC = () => {
                     >
                       <GlassCard className={`p-4 flex items-center gap-4 overflow-hidden ${idx % 2 ? "sketch-alt" : ""}`}>
                         <div className="shrink-0 flex items-center justify-center w-10 h-10 wobble-alt border-2 border-[var(--line)] bg-rose/40 font-mono text-[10px] uppercase tracking-[0.06em] text-fg -rotate-3">
-                          {typeLabel[source.kind]}
+                          {typeLabel(source)}
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -365,6 +246,7 @@ export const ReferencesScreen: React.FC = () => {
                             {source.pages > 0 ? `${source.pages} ${source.pages === 1 ? 'page' : 'pages'} · ` : ''}
                             {formatFileSize(source.sizeBytes)} · {formatRelativeTime(source.addedAt)}
                           </p>
+                          {source.note && <p className="text-[11px] text-fg-muted mt-0.5">{source.note}</p>}
                           {source.status === 'error' && source.error && (
                             <p className="text-[11px] text-danger mt-0.5">{source.error}</p>
                           )}
@@ -429,7 +311,7 @@ export const ReferencesScreen: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div>
                 <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-faint mb-1">Type</p>
-                <p className="font-mono text-sm text-fg">{typeLabel[selectedSource.kind]}</p>
+                <p className="font-mono text-sm text-fg">{typeLabel(selectedSource)}</p>
               </div>
               <div>
                 <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-fg-faint mb-1">Size</p>

@@ -14,6 +14,7 @@ import {
   type DocJob,
 } from '../../lib/humanizeStore'
 import { diffWords } from '../../lib/humanize/diff'
+import { checkEdit, documentNames } from '../../lib/humanize/guard'
 import type { Block } from '../../lib/humanize/segment'
 
 const MONO = 'font-mono text-[11px] uppercase tracking-[0.08em]'
@@ -118,7 +119,8 @@ const Row: React.FC<{
   job: DocJob
   block: Block
   current: string
-}> = ({ job, block, current }) => {
+  names: ReadonlySet<string>
+}> = ({ job, block, current, names }) => {
   const idx = block.idx
   const [editing, setEditing] = useState(false)
   const flagged = job.flagged.find(f => f.idx === idx)
@@ -127,6 +129,13 @@ const Row: React.FC<{
   const showRejected = !!flagged && !decision && rejectedBody.trim() !== ''
   const rejectedFull = showRejected ? rebuild(block, rejectedBody) : ''
   const shown = showRejected ? rejectedFull : current
+
+  const editText = decision?.kind === 'edit' ? decision.text : null
+  const editIssues = useMemo(
+    () =>
+      editText === null ? [] : checkEdit(block.text, editText, { strength: job.strength, lang: job.language ?? '', names }),
+    [editText, block.text, job.strength, job.language, names],
+  )
 
   const kind: ChipKind =
     decision?.kind === 'edit' ? 'edited' : decision?.kind === 'revert' ? 'reverted' : flagged ? 'guard' : 'kept'
@@ -156,8 +165,16 @@ const Row: React.FC<{
         </div>
       </div>
 
-      {flagged && flagged.issues.length > 0 && (
-        <p className="mt-2 font-mono text-[11px] text-fg-muted">{flagged.issues.join('; ')}</p>
+      {decision?.kind === 'edit' ? (
+        editIssues.length > 0 && (
+          <p className="mt-2 font-mono text-[11px] text-danger">{'Still ' + editIssues.join('; ')}</p>
+        )
+      ) : (
+        !decision &&
+        flagged &&
+        flagged.issues.length > 0 && (
+          <p className="mt-2 font-mono text-[11px] text-fg-muted">{flagged.issues.join('; ')}</p>
+        )
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -239,6 +256,10 @@ export const ReviewPortal: React.FC<ReviewPortalProps> = ({ sourceId, onClose })
   }, [onClose])
 
   const eff = useMemo(() => (job ? effectiveOutputs(job) : {}), [job])
+  const names = useMemo(
+    () => (job ? documentNames(job.blocks.map(b => b.text), job.language ?? '') : new Set<string>()),
+    [job?.blocks, job?.language], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   const stats = useMemo(() => {
     if (!job) return { changed: 0, reverted: 0, edited: 0, guard: 0 }
@@ -366,7 +387,7 @@ export const ReviewPortal: React.FC<ReviewPortalProps> = ({ sourceId, onClose })
                       </p>
                     </li>
                   ) : (
-                    <Row key={block.idx} job={job} block={block} current={eff[block.idx] ?? block.text} />
+                    <Row key={block.idx} job={job} block={block} current={eff[block.idx] ?? block.text} names={names} />
                   ),
                 )}
               </ul>

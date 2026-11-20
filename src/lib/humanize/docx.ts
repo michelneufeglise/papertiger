@@ -1,8 +1,6 @@
 // Word export of a humanized document: a fresh, clean .docx built from the blocks and outputs.
-import { invoke } from '@tauri-apps/api/core'
-import { save } from '@tauri-apps/plugin-dialog'
 import type { Paragraph, Table, TableCell, TextRun } from 'docx'
-import { isTauri } from '../tauri'
+import { downloadBlob, saveFile, writeBlob } from './export/save'
 import { toView, type ViewItem } from './render'
 import type { Block } from './segment'
 
@@ -101,36 +99,7 @@ export async function buildHumanizedDocx(
   return d.Packer.toBlob(doc)
 }
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  const bytes = new Uint8Array(await blob.arrayBuffer())
-  let binary = ''
-  const chunk = 0x8000
-  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
-  return btoa(binary)
-}
-
-/**
- * Saves the .docx. In Tauri: native save dialog, then the `save_file_bytes` command.
- * In the browser: Blob URL and a temporary `<a download>`.
- * Resolves true when a file was written / the download started, false when the user cancelled the dialog.
- */
+/** Saves the .docx (native dialog in Tauri, download in the browser). False when the dialog was cancelled. */
 export async function saveHumanizedDocx(blob: Blob, filename: string): Promise<boolean> {
-  if (isTauri()) {
-    const path = await save({
-      defaultPath: filename,
-      filters: [{ name: 'Word document', extensions: ['docx'] }],
-    })
-    if (!path) return false
-    await invoke('save_file_bytes', { path, base64: await blobToBase64(blob) })
-    return true
-  }
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 2000)
-  return true
+  return saveFile(filename, { name: 'Word document', extensions: ['docx'] }, writeBlob(blob), () => downloadBlob(blob, filename))
 }

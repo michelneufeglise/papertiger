@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useNavigate } from 'react-router-dom'
-import { Wand2, Copy, Download, Trash2, X, Check } from 'lucide-react'
+import { Wand2, Copy, Trash2, X, Check, Upload } from 'lucide-react'
 import { GlassCard, GlassButton, Stripe, Tiger } from '../components/ui'
 import {
   useHumanize,
@@ -21,11 +21,13 @@ import {
   type DocJob,
 } from '../lib/humanizeStore'
 import { useSources } from '../lib/sourcesStore'
+import { addFiles, pickFiles, useFileDrop } from '../lib/addFiles'
+import type { Source, SourceInput } from '../lib/sources'
 import { ReviewPortal } from '../components/humanize/ReviewPortal'
 import { useSettings } from '../lib/settings'
 import { toView, renderMarkdown } from '../lib/humanize/render'
 import type { Block } from '../lib/humanize/segment'
-import { buildHumanizedDocx, saveHumanizedDocx } from '../lib/humanize/docx'
+import { DownloadMenu } from '../components/humanize/DownloadMenu'
 
 const TONES: { id: Tone; label: string }[] = [
   { id: 'natural', label: 'Natural' },
@@ -64,6 +66,23 @@ interface CardSource {
   id: string
   name: string
   text: string
+}
+
+/** Display only: light-markdown markers out of a card preview (hashes, list dashes, table pipes). */
+function plainPreview(md: string): string {
+  return md
+    .split('\n')
+    .filter((l) => !/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(l))
+    .map((l) => {
+      if (/^\s*\|.*\|\s*$/.test(l)) return l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()).join(' · ')
+      return l.replace(/^\s{0,3}#{1,6}\s+/, '').replace(/^(\s*)[-*+]\s+/, '$1• ')
+    })
+    .join('\n')
+}
+
+function extOf(name: string): string {
+  const i = name.lastIndexOf('.')
+  return i > 0 && i < name.length - 1 ? name.slice(i).toLowerCase() : ''
 }
 
 function stripExt(name: string): string {
@@ -112,7 +131,6 @@ const PreviewCard: React.FC<{
   onReview: (el: HTMLElement) => void
 }> = ({ source, job, index, active, dimmed, manualReview, onActivate, onReview }) => {
   const [copied, setCopied] = useState(false)
-  const [exporting, setExporting] = useState(false)
 
   const outputs = useMemo(() => (job ? effectiveOutputs(job) : NO_OUTPUTS), [job?.rewrites, job?.decisions]) // eslint-disable-line react-hooks/exhaustive-deps
   const running = job?.status === 'running'
@@ -120,10 +138,10 @@ const PreviewCard: React.FC<{
   const finished = job?.status === 'done' || job?.status === 'cancelled'
 
   const preview = useMemo(() => {
-    if (!job || job.blocks.length === 0) return source.text.slice(0, 900)
+    if (!job || job.blocks.length === 0) return plainPreview(source.text.slice(0, 900))
     let o = outputs
     if (running && job.currentIdx !== null && job.draft) o = { ...outputs, [job.currentIdx]: job.draft }
-    return renderMarkdown(job.blocks, o).slice(0, 900)
+    return plainPreview(renderMarkdown(job.blocks, o).slice(0, 900))
   }, [job, outputs, running, source.text])
 
   const words = wordCount(source.text)
@@ -138,17 +156,6 @@ const PreviewCard: React.FC<{
       setTimeout(() => setCopied(false), 1400)
     } catch {
       // Clipboard denied.
-    }
-  }
-
-  const doDocx = async () => {
-    if (!job) return
-    setExporting(true)
-    try {
-      const blob = await buildHumanizedDocx(job.title, job.blocks, outputs)
-      await saveHumanizedDocx(blob, `${job.title} (humanized).docx`)
-    } finally {
-      setExporting(false)
     }
   }
 
@@ -177,7 +184,7 @@ const PreviewCard: React.FC<{
             <span className="block font-display text-[17px] leading-tight text-fg truncate">
               {job?.title || stripExt(source.name)}
             </span>
-            <span className="block font-mono text-[11px] text-fg-faint">{words.toLocaleString()} words</span>
+            <span className="block font-mono text-[11px] text-fg-faint">{words.toLocaleString()} words{extOf(source.name) && ` · ${extOf(source.name)}`}</span>
           </span>
           <StatusBadge job={job} />
         </span>
@@ -211,15 +218,7 @@ const PreviewCard: React.FC<{
           <GlassButton size="sm" variant="secondary" icon={<Copy size={14} />} onClick={doCopy}>
             {copied ? 'Copied' : 'Copy'}
           </GlassButton>
-          <GlassButton
-            size="sm"
-            variant="secondary"
-            icon={<Download size={14} />}
-            disabled={exporting}
-            onClick={doDocx}
-          >
-            .docx
-          </GlassButton>
+          <DownloadMenu size="sm" title={job.title} blocks={job.blocks} outputs={outputs} />
           {manualReview && (
             <GlassButton size="sm" variant="primary" onClick={e => onReview(e.currentTarget)}>
               Review{reviewed > 0 ? ` · ${reviewed} reviewed` : ''}
@@ -257,6 +256,16 @@ const ManualReviewBox: React.FC<{ on: boolean; onChange: (v: boolean) => void }>
   </label>
 )
 
+/** Short status of a source that is still being read ("reading…", "OCR 2/5"). */
+function readingLabel(s: Source): string {
+  if (s.status === 'queued') return 'queued…'
+  if (s.status === 'rendering') return 'rendering…'
+  if (s.kind === 'pdf' || s.kind === 'image') {
+    return s.progress.pages > 0 ? `OCR ${s.progress.page}/${s.progress.pages}` : 'OCR…'
+  }
+  return 'reading…'
+}
+
 export const HumanizeScreen: React.FC = () => {
   const navigate = useNavigate()
   const settings = useSettings()
@@ -264,6 +273,10 @@ export const HumanizeScreen: React.FC = () => {
   const h = useHumanize()
 
   const doneSources = useMemo(() => sources.filter(s => s.status === 'done' && s.text.trim()), [sources])
+  const pendingSources = useMemo(
+    () => sources.filter(s => s.status === 'queued' || s.status === 'rendering' || s.status === 'extracting'),
+    [sources],
+  )
   const running = h.runningId !== null
   const noWriter = settings.writerTag === null
 
@@ -295,7 +308,41 @@ export const HumanizeScreen: React.FC = () => {
   const openerRef = useRef<HTMLElement | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [copied, setCopied] = useState(false)
-  const [exporting, setExporting] = useState(false)
+
+  // Files added on this screen: auto-selected once each, when they reach done.
+  const [addedIds, setAddedIds] = useState<string[]>([])
+  const autoSelect = useRef<Set<string>>(new Set())
+  const [skipped, setSkipped] = useState<string[]>([])
+
+  const handleInputs = useCallback((inputs: SourceInput[]) => {
+    void addFiles(inputs, name => {
+      setSkipped(prev => [...prev, name])
+      setTimeout(() => setSkipped(prev => prev.filter(n => n !== name)), 4000)
+    }).then(ids => {
+      for (const id of ids) autoSelect.current.add(id)
+      setAddedIds(prev => [...prev, ...ids])
+    })
+  }, [])
+  const { isDragOver, dropProps } = useFileDrop(handleInputs)
+  const chooseFiles = useCallback(async () => handleInputs(await pickFiles()), [handleInputs])
+
+  useEffect(() => {
+    for (const id of Array.from(autoSelect.current)) {
+      const src = sources.find(s => s.id === id)
+      if (!src) {
+        autoSelect.current.delete(id)
+      } else if (src.status === 'done') {
+        autoSelect.current.delete(id)
+        if (src.text.trim() && !h.selected.includes(id)) toggleSelected(id)
+      } else if (src.status === 'error') {
+        autoSelect.current.delete(id)
+      }
+    }
+  }, [sources, h.selected])
+  const failedAdded = useMemo(
+    () => sources.filter(s => s.status === 'error' && addedIds.includes(s.id)),
+    [sources, addedIds],
+  )
 
   // Follow the running document: adjust state during render when the running id changes.
   const [seenRunning, setSeenRunning] = useState<string | null>(null)
@@ -350,16 +397,6 @@ export const HumanizeScreen: React.FC = () => {
       // Clipboard denied: the button just doesn't flip to "Copied".
     }
   }, [blocks, outputs])
-
-  const handleDocx = useCallback(async () => {
-    setExporting(true)
-    try {
-      const blob = await buildHumanizedDocx(title, blocks, outputs)
-      await saveHumanizedDocx(blob, `${title} (humanized).docx`)
-    } finally {
-      setExporting(false)
-    }
-  }, [title, blocks, outputs])
 
   const elapsed = runJob?.startedAt ? formatElapsed(now - runJob.startedAt) : '0s'
   const preparing = (runJob?.i ?? 0) === 0
@@ -422,18 +459,42 @@ export const HumanizeScreen: React.FC = () => {
                 </>
               )}
             </div>
-            {doneSources.length === 0 ? (
-              <div className="wobble border-2 border-dashed border-[var(--line)] py-8 px-6 flex flex-col items-center gap-3">
-                <Tiger state="cuddly" size={96} />
-                <p className="font-display text-[20px] text-fg text-center">Nothing to humanize yet.</p>
-                <p className="text-sm text-fg-muted text-center">Add a document in Sources and let it finish extracting.</p>
-                <GlassButton variant="secondary" size="sm" onClick={() => navigate('/references')}>
-                  Go to Sources
+            {skipped.map(n => (
+              <p key={n} className="mb-2 font-mono text-[12px] text-danger">
+                Skipped {n}: not a supported document type
+              </p>
+            ))}
+            <div
+              {...dropProps}
+              className={clsx(
+                'wobble relative overflow-hidden border-2 border-dashed border-[var(--line)] px-5 transition-colors duration-150',
+                doneSources.length === 0 && pendingSources.length === 0 ? 'py-7' : 'py-4',
+                isDragOver ? 'bg-rose/40' : 'bg-transparent',
+              )}
+            >
+              {isDragOver && <Stripe active className="absolute inset-x-0 top-0 rounded-none" />}
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
+                {doneSources.length === 0 && pendingSources.length === 0 && (
+                  <Tiger state={isDragOver ? 'reading' : 'cuddly'} size={72} />
+                )}
+                <p className="font-display text-[19px] text-fg text-center">
+                  {isDragOver
+                    ? 'Drop it, I will read it!'
+                    : 'Drop documents here \u2014 Word, Pages, PDF, RTF, ODT, EPUB, text\u2026'}
+                </p>
+                <GlassButton variant="secondary" size="sm" icon={<Upload size={15} />} onClick={chooseFiles}>
+                  Add documents
                 </GlassButton>
               </div>
-            ) : (
+            </div>
+            {failedAdded.map(f => (
+              <p key={f.id} className="mt-2 font-mono text-[12px] text-danger">
+                {f.name}: {f.error ?? 'could not be read'}
+              </p>
+            ))}
+            {doneSources.length + pendingSources.length > 0 && (
               <>
-                <div className="flex flex-wrap gap-2.5" role="group" aria-label="Documents">
+                <div className="mt-3 flex flex-wrap gap-2.5" role="group" aria-label="Documents">
                   {doneSources.map(s => {
                     const on = selectedValid.includes(s.id)
                     return (
@@ -470,6 +531,19 @@ export const HumanizeScreen: React.FC = () => {
                       </button>
                     )
                   })}
+                  {pendingSources.map(s => (
+                    <div
+                      key={s.id}
+                      role="status"
+                      className="wobble border-2 border-dashed border-[var(--line-soft)] bg-panel px-3.5 py-2 max-w-full flex items-center gap-2.5 opacity-80"
+                    >
+                      <span aria-hidden="true" className="h-5 w-5 shrink-0 wobble border-2 border-[var(--line-soft)]" />
+                      <span className="min-w-0">
+                        <span className="block font-display text-[17px] text-fg truncate max-w-[320px]">{s.name}</span>
+                        <span className="block font-mono text-[11px] text-fg-faint">{readingLabel(s)}</span>
+                      </span>
+                    </div>
+                  ))}
                 </div>
                 <p className="mt-3 font-mono text-[12px] text-fg-muted">
                   {selectedValid.length} selected · {selectedWords.toLocaleString()} words
@@ -608,15 +682,7 @@ export const HumanizeScreen: React.FC = () => {
                     <GlassButton variant="secondary" size="sm" icon={<Copy size={15} />} onClick={handleCopy}>
                       {copied ? 'Copied' : 'Copy'}
                     </GlassButton>
-                    <GlassButton
-                      variant="secondary"
-                      size="sm"
-                      icon={<Download size={15} />}
-                      disabled={exporting}
-                      onClick={handleDocx}
-                    >
-                      Download .docx
-                    </GlassButton>
+                    <DownloadMenu size="md" title={title} blocks={blocks} outputs={outputs} />
                     <GlassButton variant="ghost" size="sm" icon={<Trash2 size={15} />} disabled={running} onClick={clearJobs}>
                       Clear
                     </GlassButton>
@@ -641,8 +707,8 @@ export const HumanizeScreen: React.FC = () => {
                   }
                   if (item.type === 'list') {
                     return (
-                      <p key={item.idx} className="flex gap-2">
-                        <span className="font-mono text-fg-muted shrink-0">{item.marker.trim()}</span>
+                      <p key={item.idx} className="flex gap-2 pl-2">
+                        <span className="font-mono text-fg-muted shrink-0">{item.ordered ? item.marker.trim() : '•'}</span>
                         <span>{renderText(item.idx, item.text, item.rewrite)}</span>
                       </p>
                     )

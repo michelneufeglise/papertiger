@@ -54,6 +54,7 @@ interface PersistedSource {
   pages: number
   text: string
   error?: string
+  note?: string
   path?: string
 }
 
@@ -82,6 +83,7 @@ function toPersisted(source: Source): PersistedSource {
   }
   if (source.error !== undefined) persisted.error = source.error
   if (source.path !== undefined) persisted.path = source.path
+  if (source.note !== undefined) persisted.note = source.note
   return persisted
 }
 
@@ -121,6 +123,7 @@ export async function hydrateSources(): Promise<void> {
       pages: p.pages,
       text: p.text,
       error: p.error,
+      note: p.note,
       path: p.path,
     }
     restored.push(source)
@@ -175,7 +178,8 @@ export function removeSource(id: string): void {
 // `readSettings().ocrTag` at run time on every queue check: sources whose kind
 // needs OCR (pdf/image) sit in 'queued' while no OCR model is configured and
 // are (re)started as soon as one is (via the settings subscription below).
-// DOCX sources don't need OCR and process regardless.
+// Text-native documents (docx and every other non-OCR kind) don't need OCR and process
+// immediately and in parallel.
 
 const inputs: Record<string, SourceInput> = {}
 let processingOrder: string[] = []
@@ -198,17 +202,41 @@ function findRunnable(): RunnableSource | null {
     const source = state.find(s => s.id === id)
     if (!source || source.status !== 'queued') continue
     const usesOcr = needsOcr(source.kind)
-    if (usesOcr && !ocrTag) continue
+    if (!usesOcr) continue // handled by startTextProcessing
+    if (!ocrTag) continue
     return { id, ocrTag, usesOcr }
   }
   return null
 }
 
 function runQueue(): void {
+  // Text-native documents never touch the OCR model and are quick, so they start right away
+  // instead of waiting behind a long OCR job.
+  for (const id of processingOrder) {
+    const source = state.find(s => s.id === id)
+    if (!source || source.status !== 'queued' || needsOcr(source.kind) || startedText.has(id)) continue
+    startedText.add(id)
+    void startTextProcessing(id)
+  }
   if (processingId) return
   const next = findRunnable()
   if (!next) return
   void startProcessing(next.id, next.ocrTag ?? '', next.usesOcr)
+}
+
+const startedText = new Set<string>()
+
+async function startTextProcessing(id: string): Promise<void> {
+  const input = inputs[id]
+  if (!input) {
+    startedText.delete(id)
+    return
+  }
+  const controller = new AbortController()
+  abortControllers[id] = controller
+  await processSource(input, '', patch => updateSource(id, patch), controller.signal)
+  delete abortControllers[id]
+  startedText.delete(id)
 }
 
 async function startProcessing(id: string, ocrTag: string, usesOcr: boolean): Promise<void> {

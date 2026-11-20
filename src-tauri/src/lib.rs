@@ -72,6 +72,64 @@ fn file_size(path: String) -> Result<u64, String> {
   Ok(metadata.len())
 }
 
+const TEXTUTIL: &str = "/usr/bin/textutil";
+
+#[tauri::command]
+fn convert_with_textutil(path: String, to: String) -> Result<String, String> {
+  if to != "txt" && to != "html" {
+    return Err(format!("Unsupported textutil target: {to}"));
+  }
+  if !path.starts_with('/') {
+    return Err("textutil needs an absolute file path.".to_string());
+  }
+  let output = Command::new(TEXTUTIL)
+    .args(["-convert", to.as_str(), "-stdout"])
+    .arg(&path)
+    .output()
+    .map_err(|e| format!("Could not run textutil: {e}"))?;
+  if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    return Err(if stderr.is_empty() {
+      "textutil could not read this file.".to_string()
+    } else {
+      stderr
+    });
+  }
+  Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+#[tauri::command]
+fn save_with_textutil(html: String, to: String, path: String) -> Result<(), String> {
+  if !["doc", "docx", "rtf", "odt"].contains(&to.as_str()) {
+    return Err(format!("Unsupported textutil target: {to}"));
+  }
+  if !path.starts_with('/') {
+    return Err("textutil needs an absolute output path.".to_string());
+  }
+  let nanos = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .map(|d| d.as_nanos())
+    .unwrap_or(0);
+  let tmp = std::env::temp_dir().join(format!("papertiger-{}-{}.html", std::process::id(), nanos));
+  fs::write(&tmp, html.as_bytes()).map_err(|e| e.to_string())?;
+  let result = Command::new(TEXTUTIL)
+    .args(["-convert", to.as_str(), "-output"])
+    .arg(&path)
+    .arg(&tmp)
+    .output();
+  let _ = fs::remove_file(&tmp);
+  let output = result.map_err(|e| format!("Could not run textutil: {e}"))?;
+  if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    return Err(if stderr.is_empty() {
+      "textutil could not write this file.".to_string()
+    } else {
+      stderr
+    });
+  }
+  Ok(())
+}
+
 fn app_data_file_path(app: &tauri::AppHandle, name: &str) -> Result<std::path::PathBuf, String> {
   let valid = !name.is_empty()
     && name
@@ -117,7 +175,9 @@ pub fn run() {
       save_file_bytes,
       file_size,
       load_app_data,
-      save_app_data
+      save_app_data,
+      convert_with_textutil,
+      save_with_textutil
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

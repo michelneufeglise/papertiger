@@ -28,6 +28,8 @@ export type { StripeProps } from './Stripe'
 export { Tiger } from './Tiger'
 export type { TigerProps } from './Tiger'
 
+export { TigerCard } from './TigerCard'
+
 export { Kbd } from './Kbd'
 export type { KbdProps } from './Kbd'
 

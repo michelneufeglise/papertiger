@@ -391,3 +391,29 @@ export function useTigerStatusEngine(): void {
     [],
   )
 }
+
+const STATUS_LABELS: Partial<Record<TigerState, string>> = {
+  thinking: 'Thinking',
+  talking: 'Replying',
+  'opening-book': 'Opening a source',
+  'focused-reading': 'Reading',
+  'sleepy-reading': 'Still reading…',
+  'turning-page': 'Next page',
+  'amazed-reading': 'Source read!',
+  'taking-notes': 'Ready for sources',
+  'picking-up-pencil': 'Getting ready to write',
+  'thinking-before-writing': 'Thinking it over',
+  'writing-intently': 'Writing',
+  'scribbling-fast': 'Writing fast',
+  'erasing-mistake': 'Fixing a mistake',
+  'finished-page': 'Page done!',
+  sad: 'Something went wrong',
+}
+
+/** Human-readable label for a pose: friendly wording for status poses, else the capitalised name. */
+export function tigerLabel(state: TigerState): string {
+  const friendly = STATUS_LABELS[state]
+  if (friendly) return friendly
+  const name = state.replace(/-/g, ' ')
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}

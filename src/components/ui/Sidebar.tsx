@@ -22,37 +22,32 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ rotate: -3, scale: 1.05 }}
-      whileTap={{ scale: 0.94 }}
+      aria-current={active ? 'page' : undefined}
+      whileHover={{ rotate: -1, scale: 1.02 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 500, damping: 18 }}
       className={clsx(
-        'relative w-full flex flex-col items-center gap-0.5 py-2 rounded-[var(--r-md)]',
+        'relative w-full h-11 flex items-center gap-3 px-3 rounded-[var(--r-md)] text-left',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose',
         className
       )}
     >
-      <span className="relative flex h-9 w-12 items-center justify-center">
-        {active && (
-          <motion.span
-            layoutId="rail-highlighter"
-            className="highlighter absolute inset-0"
-            transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-          />
-        )}
-        <Icon size={22} className={clsx('relative z-10', active ? 'text-[#2a2522]' : 'text-fg-muted')} />
-      </span>
+      {active && (
+        <motion.span
+          layoutId="rail-highlighter"
+          className="highlighter absolute inset-0"
+          transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+        />
+      )}
+      <Icon size={20} className={clsx('relative z-10 shrink-0', active ? 'text-[#2a2522]' : 'text-fg-muted')} />
       <span
         className={clsx(
-          'font-display text-[16px] leading-none',
-          active ? 'text-fg' : 'text-fg-muted'
+          'relative z-10 font-display text-[17px] leading-none truncate',
+          active ? 'text-[#2a2522]' : 'text-fg-muted'
         )}
       >
         {label}
       </span>
-      <span
-        aria-hidden="true"
-        className={clsx('doodle-underline h-[7px] w-8 transition-opacity', active ? 'opacity-100' : 'opacity-0')}
-      />
     </motion.button>
   )
 }
@@ -69,10 +64,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ children, className }) => {
       seed={2}
       radius={18}
       overflow="hidden"
-      className={clsx('w-[84px] shrink-0 h-full', className)}
-      innerClassName="items-center gap-1 pt-2 pb-3 px-1.5 overflow-y-auto"
+      className={clsx('w-full flex-1 min-h-0', className)}
+      innerClassName="items-stretch gap-1 p-2 overflow-y-auto"
     >
-      {children}
+      <nav aria-label="Main" className="flex flex-col items-stretch gap-1">
+        {children}
+      </nav>
     </SketchFrame>
   )
 }

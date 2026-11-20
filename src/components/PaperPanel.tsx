@@ -6,6 +6,7 @@ import { useSettings } from '../lib/settings'
 import { writerById } from '../lib/models'
 import { Tiger } from './ui/Tiger'
 import { SketchFrame } from './ui/SketchFrame'
+import { LEFT_COLUMN_PX, DESK_PAD_PX, GUTTER_PX, MAIN_MIN_PX } from '../lib/layout'
 
 const COLLAPSE_KEY = 'papertiger.paperPanel'
 const WIDTH_KEY = 'papertiger.paperPanelWidth'
@@ -16,7 +17,9 @@ const PREVIEW_CHAR_LIMIT = 1800
 
 function maxWidth(): number {
   if (typeof window === 'undefined') return 900
-  return Math.max(MIN_WIDTH, Math.floor(window.innerWidth * 0.5))
+  const w = window.innerWidth
+  const room = w - 2 * DESK_PAD_PX - LEFT_COLUMN_PX - 2 * GUTTER_PX - MAIN_MIN_PX
+  return Math.max(MIN_WIDTH, Math.min(Math.floor(w * 0.5), room))
 }
 
 function clampWidth(w: number): number {

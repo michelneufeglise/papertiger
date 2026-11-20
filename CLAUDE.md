@@ -388,3 +388,13 @@ describing what was planned and what was implemented.
   - A bold run-in label stays inside its paragraph.
   - The garbled check has no vowel test, so a shifted font encoding could pass.
   - Page rotation is ignored.
+
+### 2026-11-20 — Tiger card and left column (Opus plan, Sonnet build)
+- **Why:** even at 84px the header tiger was too small to read its 48 poses. The top area is now split: a big tiger on the left, the PaperTiger header on the right.
+- **Layout** (`src/App.tsx`, constants in the new `src/lib/layout.ts`): the desk is a row with a 152px left column (tiger card above the nav) and a right column (72px header above the main card and paper panel). Every column wrapper and the card root keep `data-tauri-drag-region`. `/setup` has no left column; its header spans the full width with no tiger.
+- **`TigerCard`** (`src/components/ui/TigerCard.tsx`): a 128px tiger (`useTigerStatus() ?? useTigerCycle()`) with a caption from the new `tigerLabel()` in `tiger.ts`, plus a small hatch bar while busy. A visually hidden `aria-live="polite"` line announces only status poses, never the idle cycle.
+- **Rail** (`Sidebar.tsx`): `<nav aria-label="Main">` with 44px horizontal rows (icon + label), `aria-current="page"`, a full-row highlighter.
+- **Header** (`TitleBar.tsx`): back to 72px with no tiger; `LEFT_INSET_PX` is 20, the wordmark stays at 46px.
+- **Paper panel:** `maxWidth()` now also keeps the main card at least 360px wide (400px max panel at a 960px window).
+- Docs: `docs/DESIGN.md` updated (layout, header, tiger card and rail, panel width).
+- Verified: build, lint and 114 tests clean. In the browser at 1280×800 and 960×640: the left column is 152px, the tiger 128×128, the header 72px starting at x=176, every rail row 44px with `aria-current` on the active one, and the page does not scroll. At 960 a stored panel width of 900 clamps to 400, leaving main at 360. A flashed `focused-reading` shows "Reading" with the hatch bar and fills the live region, which empties again afterwards. Tab shows the focus ring on the rail rows. Night mode keeps the sticker disc, and `/setup` has a full-width header with no tiger. Screenshots: `docs/ux-v3-header.png`, `docs/ux-v3-header-night.png`. Not checked by eye in the Tauri window.

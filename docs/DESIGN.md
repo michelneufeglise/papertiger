@@ -111,7 +111,7 @@ If a sprite file is missing, `tigerSrc` falls back to the closest emotion, then 
 **Hydration.** Sources and chat messages that already exist when the engine first runs never trigger anything: a restored error doesn't show sad, and the seeded chat thread ending in a user message doesn't pin `thinking`.
 
 **Where each pose is used.**
-- Engine-driven (`<Tiger cycle>`): header left corner (56px), Settings (64px), paper panel header (40px), Draft generating (48px), Humanize result card while running (48px).
+- Engine-driven (`<Tiger cycle>`): left-column tiger card (128px, with caption), Settings (64px), paper panel header (40px), Draft generating (48px), Humanize result card while running (48px).
 - Sources rows (32px): `tigerForSource(source)`, which shows opening-book, focused-reading or sleepy-reading, sad on error, and nothing when done. The rows re-render every second only while something is extracting.
 - Sources drop zone (96px): `reading` on drag-over, `cuddly` with no sources, `taking-notes` when sources exist and none is running, `idle` while one runs.
 - Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Setup wizard one state per step, Humanize empty state `cuddly` (96px).
@@ -126,7 +126,8 @@ The window is a rounded **desk**, and every column floats on it as its own card 
   - It has 12px padding and 12px gaps, and carries `data-tauri-drag-region`, so any gap drags the window.
   - A `SketchFrame` outline with no fill and no shadow runs around the whole window.
   - In Tauri, `main.tsx` adds `html.tauri`, which makes html, body and #root transparent so the rounded corners show the desktop. In the browser, the area outside the rounded desk is `--desk`.
-- **Cards:** header (seed 1), rail (seed 2), main column (seed 3, with the ruled `.paper-ground` inside it), paper panel (seed 4), and the window outline (seed 5). The setup wizard sits in one large card below the header.
+- **Layout:** the desk is a row. A 152px **left column** (`LEFT_COLUMN_PX` in `src/lib/layout.ts`) holds the tiger card on top and the nav rail below. The **right column** holds the 72px header and a row with the main card and the paper panel. Setup has no left column: the header spans the full width with the wizard card below it.
+- **Cards:** tiger card (seed 4), header (seed 1), rail (seed 2), main column (seed 3, with the ruled `.paper-ground` inside it), paper panel (seed 4), and the window outline (seed 5).
 - **`SketchFrame`** (`src/components/ui/SketchFrame.tsx`):
   - Props: `seed`, `radius=18`, `shadow`, `fill`, `strokeOpacity`, `overflow="visible"|"hidden"`, `innerClassName`, `as`, and `data-*` passthrough.
   - It draws an SVG behind its children with four layers: an offset shadow (3, 4) in `--line` at 18%, a `--panel` fill, a 2.2px main stroke in `--line`, and a 1px second pencil pass at 45% from another seed.
@@ -164,26 +165,28 @@ The window is a rounded **desk**, and every column floats on it as its own card 
 
 ## Header
 
-`src/components/ui/TitleBar.tsx` is 72px tall: a paper background with a 2px ink bottom stroke, and the whole bar is a Tauri drag region.
+`src/components/ui/TitleBar.tsx` is 72px tall: a paper background with a 2px ink bottom stroke, and the whole bar is a Tauri drag region. It sits at the top of the right column and has no tiger.
 - **Left to right:**
-  1. the cycling `<Tiger cycle size={56}/>` at a 16px inset (`LEFT_INSET_PX`);
-  2. the brush-ink **"Paper Tiger" wordmark**, about 40px tall;
-  3. a hand-drawn slash;
-  4. the page name in `font-display` at 18px, muted.
+  1. the brush-ink **"Paper Tiger" wordmark** (46px tall) at a 20px inset (`LEFT_INSET_PX`);
+  2. a hand-drawn slash;
+  3. the page name in `font-display` at 20px, muted.
 - **Right side:** the "100% on-device" pill.
-- **Dragging:** the tiger, wordmark, slash and title are `pointer-events-none`, so dragging over them still moves the window.
+- **Dragging:** the wordmark, slash and title are `pointer-events-none`, so dragging over them still moves the window.
 - **Traffic lights:** the window has `decorations: false`, so no macOS traffic lights are expected in the corner. If they ever appear, raise `LEFT_INSET_PX` to about 80.
 - **Wordmark:**
   - It comes from `design/title_paper_tiger.jpeg` through `design/tools/make_wordmark.py`, which flattens the paper, turns ink darkness into alpha, trims, and saves at 96px tall.
   - The output is `src/assets/wordmark-paper-tiger.png` (324×96, `WORDMARK_RATIO` 3.375; the word gap is closed so it reads "PaperTiger").
   - It renders as a CSS `mask-image` filled with `var(--fg)`, so it is graphite on Sketchbook and chalk on Night.
   - To regenerate it, run `/opt/homebrew/bin/python3 design/tools/make_wordmark.py`.
-- **Rail:** the rail no longer carries a logo.
+## Tiger card and rail
+
+- **Tiger card** (`src/components/ui/TigerCard.tsx`): a `SketchFrame` (seed 4) at the top of the left column with a 128px `<Tiger>` that shows `useTigerStatus() ?? useTigerCycle()`. The caption under it (`font-display`, 17px, truncated) is the pose label from `tigerLabel()` in `src/lib/tiger.ts`: `text-fg` plus a small animated hatch bar while busy, `text-fg-muted` while idle. A visually hidden `aria-live="polite"` line holds only the status label, so the 5 s idle cycle is never announced; the visible caption is `aria-hidden`.
+- **Rail** (`Sidebar.tsx`): a `<nav aria-label="Main">` that fills the rest of the 152px column. Each `SidebarItem` is a 44px (`h-11`) horizontal row: 20px icon, 17px label, `aria-current="page"` when active, and the shared `highlighter` spanning the whole row. Hover is a gentle `rotate -1, scale 1.02`.
 
 ## Paper panel
 
 `src/components/PaperPanel.tsx`, the right-hand live preview of the draft, drawn as a pinned page (cream `.sketch-alt` card, slight tilt, offset shadow, tape strip).
-- Default width 480px; resizable from 380px up to 50% of the window; clamped again on window resize.
+- Default width 480px; resizable from 380px up to 50% of the window, but never so wide that the main card drops below 360px (`maxWidth()` uses the constants in `src/lib/layout.ts`; at 960px the panel tops out at 400px); clamped again on window resize.
 - Width persists in `localStorage` (`papertiger.paperPanelWidth`); open/collapsed state in `papertiger.paperPanel`. Collapsed is an 11-unit-wide rail with a vertical "Paper" label.
 - Resize handle on the left edge: `role="separator"`, 16px hit area, grip bar visible at rest (`--line` at 40%), blush on hover, press and keyboard focus. Drag with the pointer, or focus it and press ArrowLeft / ArrowRight to change the width by 24px (clamped and persisted the same way). Exposes `aria-valuenow`, `aria-valuemin`, `aria-valuemax`.
 - Preview shows up to 1800 characters per section; unwritten sections are shimmer lines; the writing section follows the caret.

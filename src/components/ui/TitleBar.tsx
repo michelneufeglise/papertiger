@@ -1,15 +1,14 @@
 import React from 'react'
 import clsx from 'clsx'
-import { Tiger } from './Tiger'
 import { SketchFrame } from './SketchFrame'
 import wordmarkUrl from '../../assets/wordmark-paper-tiger.png'
 
 // The window has decorations:false, so there are no macOS traffic lights.
 // If they ever appear, raise this (about 80px) to clear them.
-const LEFT_INSET_PX = 16
+const LEFT_INSET_PX = 20
 // Aspect ratio (w/h) of src/assets/wordmark-paper-tiger.png (324x96, one word "PaperTiger").
 const WORDMARK_RATIO = 324 / 96
-const WORDMARK_H = 40
+const WORDMARK_H = 46
 
 export interface TitleBarProps {
   title?: string
@@ -36,8 +35,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         className
       )}
     >
-      <div className="flex items-center gap-3 min-w-0 pointer-events-none">
-        <Tiger cycle size={56} className="pointer-events-none shrink-0" alt="papertiger" />
+      <div className="flex items-center gap-4 min-w-0 pointer-events-none">
         <span
           role="img"
           aria-label="Paper Tiger"
@@ -58,19 +56,19 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         <svg
           aria-hidden="true"
           width="14"
-          height="30"
-          viewBox="0 0 14 30"
+          height="36"
+          viewBox="0 0 14 36"
           className="pointer-events-none shrink-0 mx-1"
         >
           <path
-            d="M11 2 C8 9 5 19 3 28"
+            d="M11 2 C8 11 5 23 3 34"
             fill="none"
             stroke="var(--line-soft)"
             strokeWidth="2.2"
             strokeLinecap="round"
           />
         </svg>
-        <span className="pointer-events-none font-display text-[18px] text-fg-muted truncate">
+        <span className="pointer-events-none font-display text-[20px] text-fg-muted truncate">
           {title}
         </span>
       </div>

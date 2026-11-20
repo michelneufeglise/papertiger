@@ -111,7 +111,7 @@ If a sprite file is missing, `tigerSrc` falls back to the closest emotion, then 
 **Hydration.** Sources and chat messages that already exist when the engine first runs never trigger anything: a restored error doesn't show sad, and the seeded chat thread ending in a user message doesn't pin `thinking`.
 
 **Where each pose is used.**
-- Engine-driven (`<Tiger cycle>`): left-column tiger card (128px, with caption), Settings (64px), paper panel header (40px), Draft generating (48px), Humanize result card while running (48px).
+- Engine-driven (`<Tiger cycle>`): left-column tiger card (128px, illustration only), Settings (64px), paper panel header (40px), Draft generating (48px), Humanize result card while running (48px).
 - Sources rows (32px): `tigerForSource(source)`, which shows opening-book, focused-reading or sleepy-reading, sad on error, and nothing when done. The rows re-render every second only while something is extracting.
 - Sources drop zone (96px): `reading` on drag-over, `cuddly` with no sources, `taking-notes` when sources exist and none is running, `idle` while one runs.
 - Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Setup wizard one state per step, Humanize empty state `cuddly` (96px).
@@ -180,7 +180,7 @@ The window is a rounded **desk**, and every column floats on it as its own card 
   - To regenerate it, run `/opt/homebrew/bin/python3 design/tools/make_wordmark.py`.
 ## Tiger card and rail
 
-- **Tiger card** (`src/components/ui/TigerCard.tsx`): a `SketchFrame` (seed 4) at the top of the left column with a 128px `<Tiger>` that shows `useTigerStatus() ?? useTigerCycle()`. The caption under it (`font-display`, 17px, truncated) is the pose label from `tigerLabel()` in `src/lib/tiger.ts`: `text-fg` plus a small animated hatch bar while busy, `text-fg-muted` while idle. A visually hidden `aria-live="polite"` line holds only the status label, so the 5 s idle cycle is never announced; the visible caption is `aria-hidden`.
+- **Tiger card** (`src/components/ui/TigerCard.tsx`): a `SketchFrame` (seed 4) at the top of the left column with a 128px `<Tiger>` that shows `useTigerStatus() ?? useTigerCycle()`. The card shows only the illustration (152×152 square card, 128px tiger, no visible caption or busy bar). A visually hidden `aria-live="polite"` line holds the status label from `tigerLabel()` in `src/lib/tiger.ts`, so status changes are announced to screen readers and the 5 s idle cycle never is; the tiger's `alt` carries the pose label.
 - **Rail** (`Sidebar.tsx`): a `<nav aria-label="Main">` that fills the rest of the 152px column. Each `SidebarItem` is a 44px (`h-11`) horizontal row: 20px icon, 17px label, `aria-current="page"` when active, and the shared `highlighter` spanning the whole row. Hover is a gentle `rotate -1, scale 1.02`.
 
 ## Paper panel

@@ -5,7 +5,11 @@ import { tigerLabel, useTigerCycle, useTigerStatus } from '../../lib/tiger'
 
 const TIGER_SIZE = 128
 
-/** The big tiger with a caption. Shows the live status while busy, else the 5 s idle cycle. */
+/**
+ * The big tiger, illustration only. Shows the live status pose while busy, else the 5 s idle
+ * cycle. There is no visible caption; status changes are still announced to screen readers
+ * through a hidden live region (the idle cycle is never announced).
+ */
 export const TigerCard: React.FC = () => {
   const status = useTigerStatus()
   const cycled = useTigerCycle()
@@ -16,24 +20,9 @@ export const TigerCard: React.FC = () => {
       seed={4}
       radius={18}
       data-tauri-drag-region
-      className="shrink-0 flex flex-col items-center p-3 select-none"
+      className="shrink-0 flex items-center justify-center p-3 select-none"
     >
       <Tiger state={shown} size={TIGER_SIZE} alt={label} className="pointer-events-none" />
-      <p
-        aria-hidden="true"
-        className={
-          'pointer-events-none mt-1.5 w-full text-center truncate font-display text-[17px] leading-tight ' +
-          (status ? 'text-fg' : 'text-fg-muted')
-        }
-      >
-        {label}
-      </p>
-      {status && (
-        <span
-          aria-hidden="true"
-          className="hatch hatch-animate pointer-events-none mt-1 block h-1 w-10 rounded-full"
-        />
-      )}
       <p aria-live="polite" className="sr-only">
         {status ? tigerLabel(status) : ''}
       </p>

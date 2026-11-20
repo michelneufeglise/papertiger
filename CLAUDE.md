@@ -398,3 +398,10 @@ describing what was planned and what was implemented.
 - **Paper panel:** `maxWidth()` now also keeps the main card at least 360px wide (400px max panel at a 960px window).
 - Docs: `docs/DESIGN.md` updated (layout, header, tiger card and rail, panel width).
 - Verified: build, lint and 114 tests clean. In the browser at 1280×800 and 960×640: the left column is 152px, the tiger 128×128, the header 72px starting at x=176, every rail row 44px with `aria-current` on the active one, and the page does not scroll. At 960 a stored panel width of 900 clamps to 400, leaving main at 360. A flashed `focused-reading` shows "Reading" with the hatch bar and fills the live region, which empties again afterwards. Tab shows the focus ring on the rail rows. Night mode keeps the sticker disc, and `/setup` has a full-width header with no tiger. Screenshots: `docs/ux-v3-header.png`, `docs/ux-v3-header-night.png`. Not checked by eye in the Tauri window.
+
+### 2026-11-20 — Tiger card shows only the illustration (Opus plan, Sonnet build)
+- The visible caption and the busy hatch bar under the tiger are removed from `TigerCard.tsx` at the user's request.
+- The card is a 152×152 square with the 128px tiger centred in it.
+- The tiger's `alt` and the hidden `aria-live="polite"` status line are kept, so status changes are still announced to screen readers.
+- Docs: `docs/DESIGN.md` updated (tiger card and tiger-usage list).
+- Verified: build and lint clean. In the browser at 1280×800 the card measures 152×152 with the tiger at 128×128 and no visible text; a flashed `focused-reading` still fills the live region with "Reading", which empties again afterwards. `docs/ux-v3-header.png` refreshed.

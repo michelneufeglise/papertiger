@@ -114,7 +114,7 @@ If a sprite file is missing, `tigerSrc` falls back to the closest emotion, then 
 - Engine-driven (`<Tiger cycle>`): left-column tiger card (128px, illustration only), Settings (64px), paper panel header (40px), Draft generating (48px), Humanize result card while running (48px).
 - Sources rows (32px): `tigerForSource(source)`, which shows opening-book, focused-reading or sleepy-reading, sad on error, and nothing when done. The rows re-render every second only while something is extracting.
 - Sources drop zone (96px): `reading` on drag-over, `cuddly` with no sources, `taking-notes` when sources exist and none is running, `idle` while one runs.
-- Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Setup wizard one state per step, Humanize empty state `cuddly` (96px).
+- Fixed: Chat empty state `hopeful` (140px), Chat typing indicator `thinking` (36px), Setup wizard one default pose per step (see Setup wizard), Humanize empty state `cuddly` (96px).
 
 **Night sticker.** In dark mode the tiger sits on a cream (`#fbf6ea`) disc with a `--line` border and 6% inset, so the graphite line work stays readable. Detected by watching the `dark` class on `<html>`.
 
@@ -190,6 +190,47 @@ The window is a rounded **desk**, and every column floats on it as its own card 
 - Width persists in `localStorage` (`papertiger.paperPanelWidth`); open/collapsed state in `papertiger.paperPanel`. Collapsed is an 11-unit-wide rail with a vertical "Paper" label.
 - Resize handle on the left edge: `role="separator"`, 16px hit area, grip bar visible at rest (`--line` at 40%), blush on hover, press and keyboard focus. Drag with the pointer, or focus it and press ArrowLeft / ArrowRight to change the width by 24px (clamped and persisted the same way). Exposes `aria-valuenow`, `aria-valuemin`, `aria-valuemax`.
 - Preview shows up to 1800 characters per section; unwritten sections are shimmer lines; the writing section follows the caret.
+
+## Setup wizard
+
+Route `/setup`, in `src/screens/setup/`. It replaces the old single-file `src/screens/SetupWizard.tsx` and its 6 steps. `SetupWizard.tsx` there is now only the shell. There is no left column: the header spans the full width with the wizard card below it.
+
+**Steps** (`steps.ts`, the registry: id, chapter, label, guide line, default pose). 12 steps in 6 chapters:
+
+| Chapter | Step id → default pose |
+| --- | --- |
+| Hello | `welcome` → waving-bye, `privacy` → proud |
+| Your Mac | `mac` → wonder, `ollama` → thinking |
+| Models | `ocr` → opening-book, `writer` → picking-up-pencil (optional, skippable), `download` → busy |
+| Preferences | `pdf` → focused-reading, `style` → writing-intently, `look` → cheerful |
+| Tour | `tour` → taking-notes |
+| Done | `done` → excited |
+
+**Structure.** `WizardContext.tsx` holds the shared state and navigation (its header comment is the API reference). There is one file per step in `steps/`, and `parts.tsx` has `Heading` and `WizardActions`.
+
+**GuideTiger** (`GuideTiger.tsx`). A 120px `<Tiger>` beside a hand-drawn speech bubble with the step's guide line. The bubble is `aria-live="polite"`, so changes are announced. It stacks (tiger above, tail pointing up) when the wizard container is under 720px wide (container query), and sits side by side (tail pointing left) above that.
+
+**Stepper** (`Stepper.tsx`). The six chapter names across the top (current one highlighted and doodle-underlined, finished ones struck through), then a mono "Step k of 12" and one dot per step in the current chapter.
+
+**Footer.** Always visible below the scrolling content. Step actions are portalled in bottom-left through `<WizardActions>`. Back is shown on every step except welcome, and is hidden while a model pull is running. Only the step content scrolls (checked at 960×640).
+
+**Focus.** Each step's `<Heading>` (the h1) takes focus when the step changes.
+
+**State and links.**
+- The current step is saved in `localStorage` as `papertiger.setupStep`, so a reload resumes there. It is cleared when setup finishes.
+- Deep links: `?step=<id>` jumps to a step, and `?from=settings` marks that the wizard was opened from Settings (finish and the last button then lead back to Settings).
+- **Return-to-summary mode** (`returnToDone`): on for Done's Change buttons and for `?step=<id>&from=settings` links (Settings' OCR and writer Change buttons, and "Run setup again" opens the full wizard). `next()` then goes ocr or writer, then download, then done, skipping the rest, and the primary button reads "Back to summary". The mode clears on reaching Done.
+
+**Reactive poses.** Steps override the guide with `useGuide(stepId, {tiger, line} | null)`. The override reverts when the step changes.
+- Ollama: found → excited, not found → confused with Continue disabled. It re-checks silently every 3 s while missing, and once on entry, so starting Ollama is noticed without a click.
+- Download: busy while pulling, finished-page when every model is ready (also when all are "Already on this Mac"), erasing-mistake on an error.
+- PDF text: choosing "Always use OCR" → opening-book and an OCR line; the choice is stored as `pdfTextLayer`.
+- Writing style: moving a slider flicks scribbling-fast for 1.2 s, and the preview updates live.
+- Look: choosing Night applies it at once and shows chilling.
+- Tour: hovering or focusing a card changes pose and line (Chat → talking, Sources → focused-reading, Draft → writing-intently, Humanize → erasing-mistake).
+- Welcome: happy after 2.2 s. Your Mac: happy once the hardware is read.
+
+Screenshots: `docs/ux-v3-wizard-look-night.png` (Look step in Night with the chilling pose), `docs/ux-v3-wizard-tour.png` (Tour with a card hovered), `docs/ux-v3-wizard-pdf.png` (PDF text step).
 
 ## Motion and performance
 

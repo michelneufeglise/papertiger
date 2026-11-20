@@ -124,7 +124,7 @@ export const SettingsScreen: React.FC = () => {
                 {ocrModel && (
                   <Chip tone="mint" mono>ON-DEVICE</Chip>
                 )}
-                <GlassButton variant="ghost" size="sm" onClick={() => navigate('/setup')}>
+                <GlassButton variant="ghost" size="sm" onClick={() => navigate('/setup?step=ocr&from=settings')}>
                   Change
                 </GlassButton>
               </div>
@@ -182,7 +182,7 @@ export const SettingsScreen: React.FC = () => {
                 {writerModel && (
                   <Chip tone="mint" mono>ON-DEVICE</Chip>
                 )}
-                <GlassButton variant="ghost" size="sm" onClick={() => navigate('/setup?step=writer')}>
+                <GlassButton variant="ghost" size="sm" onClick={() => navigate('/setup?step=writer&from=settings')}>
                   {writerModel ? 'Change' : 'Choose'}
                 </GlassButton>
               </div>
@@ -299,6 +299,10 @@ export const SettingsScreen: React.FC = () => {
             <p className="text-xs text-fg-muted leading-relaxed">
               papertiger is a research assistant that reads your sources and writes in your voice, entirely on-device.
             </p>
+
+            <GlassButton variant="ghost" size="sm" onClick={() => navigate('/setup?from=settings')}>
+              Run setup again
+            </GlassButton>
 
             <GlassButton variant="secondary" size="sm" className="w-full">
               Check for updates

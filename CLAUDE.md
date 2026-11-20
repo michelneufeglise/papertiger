@@ -411,3 +411,33 @@ describing what was planned and what was implemented.
 - **Fix:** `design/tools/cut_tiger_sheet.py` got a `label_top_override` of 1946 (sheet y 2335, inside the blank band 2333–2340 between feet and label text) for cells `(5,0)`–`(5,5)`. Fixed sprites: `nervous`, `hopeful`, `chilling`, `wonder`, `writing`, `reading`. No algorithm change.
 - **`--check` flag:** `cut_tiger_sheet.py --sheet <name> --check` lists cells where ink touches the crop's last rows and continues more than 8px below it. Known false positives that are label text under a correct crop: emotions `sad` (~49px) and `frustrated` (~38px); reading-writing `finished-page` (9px, shadow).
 - **Verified:** the other 30 emotions sprites and all 12 reading-writing sprites are byte-identical (md5 before and after; only the six changed). The six new sprites show full bodies with feet and no label-letter fragments. `npm run build` is clean.
+
+### 2026-11-20 — Guided setup wizard (Opus plan, Sonnet build)
+- **Why:** the user asked for every setup step to be covered, with Paper Tiger as a guide. The old 6-step wizard in one file only handled the model downloads.
+- **Steps:** 12 steps in 6 chapters. Hello (welcome, privacy), Your Mac (mac, ollama), Models (ocr, writer, download), Preferences (pdf, style, look), Tour (tour), Done (done). Each step has its own guide line and pose, and the guide reacts live (Ollama found or missing, download state, PDF choice, style slider, Night, tour hover).
+- **Structure:** `src/screens/setup/`:
+  - the shell is `SetupWizard.tsx`;
+  - `WizardContext.tsx` holds state and navigation;
+  - `steps.ts` is the registry (id, chapter, guide line, pose);
+  - `GuideTiger.tsx` is the 120px tiger with a speech bubble;
+  - `Stepper.tsx` shows chapters, "Step k of 12" and dots;
+  - there is one file per step in `steps/`.
+  - The old `src/screens/SetupWizard.tsx` is removed. The current step is saved as `papertiger.setupStep`. Deep links are `?step=<id>` and `?from=settings`.
+- **Settings:** a "Run setup again" button, and the OCR and writer Change buttons now deep-link to `/setup?step=ocr|writer&from=settings`.
+- **Return-to-summary mode:** Done's Change buttons and the Settings deep links jump to one step, then go through download back to Done. The primary button reads "Back to summary", and the last one "Back to Settings" when opened from Settings.
+- **Docs:** `docs/DESIGN.md` has a new "Setup wizard" section. Screenshots are `docs/ux-v3-wizard-look-night.png`, `docs/ux-v3-wizard-tour.png` and `docs/ux-v3-wizard-pdf.png`.
+- **Verified:**
+  - Build, lint and 114 tests are clean.
+  - In the browser at 1180×780 and 960×640, all 12 steps were walked forward with the expected pose and guide line per step and "Step k of 12". Focus lands on each step heading.
+  - Ollama: found → excited; fetch blocked → confused with Continue disabled; unblocked → excited within the 3 s re-check.
+  - OCR Q4 and Qwen3 4B Q4 both "Already on this Mac" → finished-page.
+  - The PDF choice persists `pdfTextLayer` and switches the pose.
+  - A style slider flicks scribbling-fast and updates the preview.
+  - Night applies live with the chilling pose.
+  - Tour hover changes pose and line.
+  - Done lists all five choices, and each Change returns via "Back to summary".
+  - A reload resumes on the saved step.
+  - `?step=writer&from=settings` goes writer → download → summary with "Back to Settings".
+  - At 960×640 the guide and footer stay visible and the content scrolls.
+- **Not verified:** the Tauri window by eye, and a real model download (all models were already pulled).
+- **Test note:** React's `onMouseEnter` does not fire for synthetic `mouseenter` events. Use the browser tool's hover.

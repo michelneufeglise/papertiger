@@ -369,3 +369,22 @@ describing what was planned and what was implemented.
   - .doc in the Tauri window;
   - the native save dialogs and Finder drag-drop.
 - **Test note:** `\u` sequences typed into Bash tool commands are decoded before they reach the shell. Move RTF samples as base64.
+
+### 2026-11-20 — Text-layer extraction for digital PDFs (Opus plan, Sonnet build)
+- **Extraction:** `src/lib/extract/pdfText.ts` reads a PDF page's text layer into light markdown. It groups items into lines by baseline and reads two-column pages left then right.
+  - Paragraphs split on line gaps; hyphenated line breaks are joined.
+  - Headings come from font size, with levels ranked document-wide via `fontProfileOfDocument`. Bullets become list items, and aligned rows become `| a | b |` tables.
+  - A quality gate (`text` / `empty` / `garbled`) decides per page. `stripRunningLines` drops repeated headers, footers and page numbers.
+- **Sources:** `processSource` opens the PDF once and walks the pages. Text pages are read directly; other pages are rendered alone and OCR'd, so memory stays low on 8 GB Macs. The note says how each file was read ("Read from the text (no OCR needed)", "Read 3 pages from the text, 1 with OCR"). With no OCR model, scanned pages are skipped with a note. The OCR model is only unloaded if OCR actually ran.
+- **Setting:** Settings → Models → "PDF text": "Use the text when it's there" (default) or "Always use OCR" (keeps table layout better). Stored as `pdfTextLayer`.
+- **Verified in the browser** (114 tests, build and lint clean):
+  - `docs/sample-page.pdf` and a 3-page pdf-lib fixture finished in 0.58 s with no Ollama calls. Their headings (`#` title, `##` sections on every page), the paragraph split, the hyphen join, the bullets and the table were correct, and the footers were gone.
+  - The text layer covers 97% of the earlier OCR words; every difference is the table, which OCR had glued together.
+  - A mixed PDF read 3 pages from the text in 0.3 s and OCR'd the scanned page, with one OCR call and an unload afterwards.
+  - "Always use OCR" sends the same digital PDF through OCR again.
+  - Humanize on the digital fixture keeps the headings, the caption and every table cell, and rewrites only the paragraphs.
+- **Simplified heuristics:**
+  - Tables need equal cell counts and are not detected on two-column pages.
+  - A bold run-in label stays inside its paragraph.
+  - The garbled check has no vowel test, so a shifted font encoding could pass.
+  - Page rotation is ignored.

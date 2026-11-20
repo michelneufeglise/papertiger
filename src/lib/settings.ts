@@ -8,6 +8,8 @@ export interface AppSettings {
   writerId: string | null
   writerTag: string | null
   writerSkipped: boolean
+  /** Read digital PDFs from their text layer; scanned pages still go to OCR. */
+  pdfTextLayer: boolean
 }
 
 const STORAGE_KEY = 'papertiger.settings'
@@ -19,6 +21,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   writerId: null,
   writerTag: null,
   writerSkipped: false,
+  pdfTextLayer: true,
 }
 
 type Listener = () => void

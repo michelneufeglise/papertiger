@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Monitor, type LucideIcon } from 'lucide-react'
 import { GlassCard, GlassButton, GlassInput, Chip, Tiger } from '../components/ui'
 import { useTheme, THEME_LABELS, type ThemeMode } from '../lib/theme'
-import { useSettings } from '../lib/settings'
+import { useSettings, updateSettings } from '../lib/settings'
 import { OCR_MODELS, writerById } from '../lib/models'
 import { useVoice, setTuning, describeVoice, type VoiceTunings } from '../lib/voice'
 
@@ -25,6 +25,11 @@ const Eyebrow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <span className="doodle-underline">{children}</span>
   </h2>
 )
+
+const PDF_TEXT_OPTIONS: { value: boolean; label: string }[] = [
+  { value: true, label: "Use the text when it's there" },
+  { value: false, label: 'Always use OCR' },
+]
 
 const Hairline: React.FC = () => <div className="border-t-2 border-dashed border-[var(--line-soft)]" />
 
@@ -123,6 +128,39 @@ export const SettingsScreen: React.FC = () => {
                   Change
                 </GlassButton>
               </div>
+            </div>
+
+            <div className="pt-1">
+              <p className="font-display text-[17px] leading-tight text-fg mb-2">PDF text</p>
+              <div className="flex flex-wrap items-center gap-3" role="group" aria-label="PDF text">
+                {PDF_TEXT_OPTIONS.map(({ value, label }, idx) => {
+                  const selected = settings.pdfTextLayer === value
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => updateSettings({ pdfTextLayer: value })}
+                      aria-pressed={selected}
+                      className={`${idx % 2 ? 'wobble-alt' : 'wobble'} sketch-btn relative border-2 px-4 py-1.5 font-display text-[17px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose ${
+                        selected ? 'border-[var(--line)] text-fg' : 'border-[var(--line-soft)] text-fg-muted'
+                      }`}
+                    >
+                      {selected && (
+                        <motion.div
+                          layoutId="pdf-text-pill"
+                          className="highlighter absolute inset-0 -z-0 wobble"
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        />
+                      )}
+                      <span className="relative z-10">{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-fg-muted mt-2">
+                Digital PDFs are read straight from their text, which is instant; scanned pages always use OCR.
+                Always using OCR keeps table layout better.
+              </p>
             </div>
 
             <Hairline />

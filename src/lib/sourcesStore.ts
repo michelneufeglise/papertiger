@@ -185,6 +185,9 @@ const inputs: Record<string, SourceInput> = {}
 let processingOrder: string[] = []
 const abortControllers: Record<string, AbortController> = {}
 let processingId: string | null = null
+// True once the OCR model has actually been called since it was last unloaded
+// (digital PDFs read from their text layer never load it).
+let ocrRan = false
 
 function needsOcr(kind: Source['kind']): boolean {
   return kind === 'pdf' || kind === 'image'
@@ -250,7 +253,8 @@ async function startProcessing(id: string, ocrTag: string, usesOcr: boolean): Pr
   const controller = new AbortController()
   abortControllers[id] = controller
 
-  await processSource(input, ocrTag, patch => updateSource(id, patch), controller.signal)
+  const { usedOcr } = await processSource(input, ocrTag, patch => updateSource(id, patch), controller.signal)
+  if (usedOcr) ocrRan = true
 
   delete abortControllers[id]
   processingId = null
@@ -258,8 +262,9 @@ async function startProcessing(id: string, ocrTag: string, usesOcr: boolean): Pr
   const next = findRunnable()
   if (next) {
     runQueue()
-  } else if (usesOcr) {
+  } else if (usesOcr && ocrRan) {
     // The queue has drained of OCR work — free the memory for the writer.
+    ocrRan = false
     const currentTag = readSettings().ocrTag
     if (currentTag) void unloadModel(currentTag)
   }

@@ -405,3 +405,9 @@ describing what was planned and what was implemented.
 - The tiger's `alt` and the hidden `aria-live="polite"` status line are kept, so status changes are still announced to screen readers.
 - Docs: `docs/DESIGN.md` updated (tiger card and tiger-usage list).
 - Verified: build and lint clean. In the browser at 1280×800 the card measures 152×152 with the tiger at 128×128 and no visible text; a flashed `focused-reading` still fills the live region with "Reading", which empties again afterwards. `docs/ux-v3-header.png` refreshed.
+
+### 2026-11-20 — Tiger sprites with cut-off bodies fixed (Opus plan, Sonnet build)
+- **Cause:** on the emotions sheet the bottom row's `label_top` (1921 preview units, sheet y 2305) sat 20–25 sheet px above the real feet, because the labels in that row start lower than in the other rows. The six sprites cut from it lost their feet or lower body; the user saw it on "hopeful" at 128px in the tiger card. The card itself was not clipping.
+- **Fix:** `design/tools/cut_tiger_sheet.py` got a `label_top_override` of 1946 (sheet y 2335, inside the blank band 2333–2340 between feet and label text) for cells `(5,0)`–`(5,5)`. Fixed sprites: `nervous`, `hopeful`, `chilling`, `wonder`, `writing`, `reading`. No algorithm change.
+- **`--check` flag:** `cut_tiger_sheet.py --sheet <name> --check` lists cells where ink touches the crop's last rows and continues more than 8px below it. Known false positives that are label text under a correct crop: emotions `sad` (~49px) and `frustrated` (~38px); reading-writing `finished-page` (9px, shadow).
+- **Verified:** the other 30 emotions sprites and all 12 reading-writing sprites are byte-identical (md5 before and after; only the six changed). The six new sprites show full bodies with feet and no label-letter fragments. `npm run build` is clean.

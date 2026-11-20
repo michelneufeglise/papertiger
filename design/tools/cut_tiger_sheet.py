@@ -4,7 +4,7 @@
 Cuts design/tiger-emotions-sheet.jpg (6x6 pencil tigers) into 36 transparent
 WebP sprites at src/assets/tiger/<state>.webp and writes a contact sheet.
 
-Usage (from repo root):  /opt/homebrew/bin/python3 design/tools/cut_tiger_sheet.py [--sheet emotions|reading-writing] [contact.png]
+Usage (from repo root):  /opt/homebrew/bin/python3 design/tools/cut_tiger_sheet.py [--sheet emotions|reading-writing] [--check] [contact.png]
 Needs: Pillow, numpy, scipy.
 """
 import sys
@@ -23,7 +23,12 @@ SHEETS = {
         cols=[(20, 275), (275, 515), (515, 750), (750, 978), (978, 1195), (1195, 1460)],
         # (top, label_top) per row; label_top may be overridden per cell
         rows=[(135, 400), (448, 712), (760, 1030), (1075, 1340), (1385, 1648), (1700, 1921)],
-        label_top_override={(1, 3): 666, (3, 3): 1340},  # SLEEPING/SNEAKY two-line label
+        # (1,3)/(3,3): SLEEPING/SNEAKY two-line label.
+        # Row 5 (nervous..reading): the labels sit lower than in other rows, so the row's label_top
+        # (1921) cut the bodies ~20-25 sheet px above the feet. 1946 -> sheet y 2335, inside the blank
+        # band (2333-2340) between the feet and the label text (measured: ink < median - 60).
+        label_top_override={(1, 3): 666, (3, 3): 1340,
+                            (5, 0): 1946, (5, 1): 1946, (5, 2): 1946, (5, 3): 1946, (5, 4): 1946, (5, 5): 1946},
         # Two-line labels of the row above poke into these cells: start lower.
         top_override={(4, 3): 1412, (5, 0): 1727, (5, 1): 1727},
         names=("idle listening thinking talking happy sad surprised laughing shy sleeping bored angry "
@@ -141,9 +146,37 @@ def cut(img, r, c):
     return im.crop(bb)
 
 
+def check(img, names):
+    """Dev aid: list cells where ink touches the crop's last row and keeps going down for more than
+    8 px before a blank band (a body cut off by a too-high label_top). Known false positives are the
+    label text itself sitting right under a correct crop (emotions: sad, frustrated)."""
+    g = np.asarray(img.convert("L")).astype(np.float32)
+    ink = g < np.median(g) - 60
+    cols = len(CFG["cols"])
+    hits = 0
+    for r in range(len(CFG["rows"])):
+        for c in range(cols):
+            x0, _, x1, y1 = cell_window(r, c)
+            rows = ink[:, x0:x1].sum(axis=1)
+            if rows[y1 - 3:y1].sum() <= 2:
+                continue
+            y, blank = y1, 0
+            while y < len(rows) and blank < 4:
+                blank = blank + 1 if rows[y] <= 2 else 0
+                y += 1
+            cont = y - blank - y1
+            if cont > 8:
+                hits += 1
+                print(f"  {names[r * cols + c]} (r{r}c{c}): ink continues {cont}px below the crop")
+    print("check:", hits, "candidate(s)")
+
+
 def main():
     global CFG
     args = sys.argv[1:]
+    do_check = "--check" in args
+    if do_check:
+        args.remove("--check")
     sheet = "emotions"
     if "--sheet" in args:
         k = args.index("--sheet")
@@ -153,6 +186,9 @@ def main():
     contact = Path(args[0]) if args else Path("tiger-contact.png")
     names, cols, nrows = CFG["names"], len(CFG["cols"]), len(CFG["rows"])
     img = Image.open(ROOT / "design" / CFG["src"])
+    if do_check:
+        check(img, names)
+        return
     sprites = [drop_edge_specks(cut(img, r, c), names[r * cols + c])
                for r in range(nrows) for c in range(cols)]
     side = int(max(max(s.size) for s in sprites) * 1.04)
